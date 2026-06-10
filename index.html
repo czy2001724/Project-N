@@ -1,22 +1,44 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Project N Demo</title>
+    <title>Project N — 雏形 M1</title>
     <link rel="stylesheet" href="./styles.css" />
+
+    <!-- Three.js from CDN via import map (no build step needed) -->
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+        }
+      }
+    </script>
   </head>
   <body>
     <div id="hud">
-      <div class="title">Project N Demo</div>
-      <div class="hint">F8 game mode, WASD move, Shift sprint, Space jump, Ctrl crouch, V camera</div>
-      <div id="status" class="status"></div>
+      <div class="title">Project N — M1 雏形</div>
+      <div class="hint">WASD 移动 · 鼠标瞄准 · 左键射击 · R 换弹 · Shift 冲刺 · Ctrl 下蹲 · Space 跳</div>
     </div>
-    <div id="crosshair" aria-hidden="true"></div>
+
+    <div id="crosshair" aria-hidden="true"><span></span></div>
+    <div id="hitmarker" aria-hidden="true"></div>
+
+    <div id="stats">
+      <div class="row"><span class="label">击杀</span><span id="score">0</span></div>
+      <div class="row"><span class="label">弹药</span><span id="ammo">30 / 120</span></div>
+      <div class="row"><span class="label">生命</span><span id="health">100</span></div>
+    </div>
+
     <div id="overlay">
-      <button id="startBtn">Start</button>
+      <div class="panel">
+        <h1>Project N</h1>
+        <p>科幻射击雏形 · M1</p>
+        <button id="startBtn">点击开始</button>
+        <p class="sub">点击后锁定鼠标，按 Esc 释放</p>
+      </div>
     </div>
-    <canvas id="game"></canvas>
-    <script type="module" src="./app.js"></script>
+
+    <script type="module" src="./src/main.js"></script>
   </body>
 </html>

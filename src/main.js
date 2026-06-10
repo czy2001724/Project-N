@@ -1,0 +1,126 @@
+import * as THREE from "three";
+import { createWorld } from "./world.js";
+import { createPlayer } from "./player.js";
+import { createWeapon } from "./weapon.js";
+
+// --- Renderer / scene / camera ------------------------------------------
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.08, 200);
+scene.add(camera); // camera holds the weapon view-model
+
+const world = createWorld(scene);
+const player = createPlayer(camera, world);
+
+// HUD elements
+const overlay = document.getElementById("overlay");
+const startBtn = document.getElementById("startBtn");
+const crosshair = document.getElementById("crosshair");
+const hitmarker = document.getElementById("hitmarker");
+const scoreEl = document.getElementById("score");
+const ammoEl = document.getElementById("ammo");
+const healthEl = document.getElementById("health");
+
+const weapon = createWeapon(camera, scene, world, player, {
+  onHitmarker() {
+    // retrigger the CSS flash animation
+    hitmarker.classList.remove("show");
+    void hitmarker.offsetWidth;
+    hitmarker.classList.add("show");
+  },
+});
+
+// --- Input --------------------------------------------------------------
+const inputState = { locked: false, firing: false };
+
+function onKeyDown(e) {
+  if (["KeyW", "KeyA", "KeyS", "KeyD", "Space", "ShiftLeft", "ControlLeft"].includes(e.code)) {
+    e.preventDefault();
+  }
+  player.keys.add(e.code);
+  if (e.code === "KeyR") weapon.reload();
+}
+
+function onKeyUp(e) {
+  player.keys.delete(e.code);
+}
+
+function onMouseMove(e) {
+  if (!inputState.locked) return;
+  player.look(e.movementX, e.movementY);
+}
+
+function onMouseDown(e) {
+  if (!inputState.locked) return;
+  if (e.button === 0) inputState.firing = true;
+}
+
+function onMouseUp(e) {
+  if (e.button === 0) inputState.firing = false;
+}
+
+function requestLock() {
+  renderer.domElement.requestPointerLock?.();
+}
+
+function onPointerLockChange() {
+  inputState.locked = document.pointerLockElement === renderer.domElement;
+  overlay.classList.toggle("hidden", inputState.locked);
+  crosshair.style.display = inputState.locked ? "block" : "none";
+  if (!inputState.locked) {
+    inputState.firing = false;
+    player.keys.clear();
+  }
+}
+
+startBtn.addEventListener("click", requestLock);
+renderer.domElement.addEventListener("click", () => {
+  if (!inputState.locked) requestLock();
+});
+window.addEventListener("keydown", onKeyDown);
+window.addEventListener("keyup", onKeyUp);
+window.addEventListener("mousemove", onMouseMove);
+window.addEventListener("mousedown", onMouseDown);
+window.addEventListener("mouseup", onMouseUp);
+document.addEventListener("pointerlockchange", onPointerLockChange);
+
+window.addEventListener("resize", () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// --- HUD ----------------------------------------------------------------
+function updateHUD() {
+  scoreEl.textContent = String(world.state.score);
+  ammoEl.textContent = weapon.stats.reloading
+    ? "换弹中…"
+    : `${weapon.stats.ammo} / ${weapon.stats.reserve}`;
+  healthEl.textContent = String(Math.round(player.state.health));
+}
+
+// --- Main loop ----------------------------------------------------------
+let last = performance.now();
+function animate(now) {
+  const dt = Math.min(0.033, (now - last) / 1000);
+  last = now;
+
+  if (inputState.locked) {
+    player.update(dt);
+    if (inputState.firing) weapon.tryFire(now / 1000);
+    weapon.update(dt);
+    world.update(dt);
+  }
+
+  renderer.render(scene, camera);
+  updateHUD();
+  requestAnimationFrame(animate);
+}
+
+requestAnimationFrame(animate);
