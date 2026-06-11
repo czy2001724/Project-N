@@ -60,7 +60,7 @@
         <button id="copy">复制参数</button>
         <button id="reset">恢复当前游戏值</button>
       </div>
-      <div class="hint">调到满意后点「复制参数」，把内容发给我即可。画面与游戏一致（相机 FOV 72，洋红线=屏幕中线）。</div>
+      <div class="hint">调到满意后点「复制参数」，把内容发给我即可。画面与游戏一致（相机 FOV 72，洋红线=屏幕中线）。<br />提示：横向位置会随窗口宽高比变化，请把调节器和游戏都用同样大小的窗口（最好都全屏/最大化）。</div>
     </div>
 
     <script type="importmap">
@@ -75,8 +75,8 @@
       import * as THREE from "three";
       import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
 
-      // Defaults = current in-game values (akmodel.js v260611010)
-      const DEFAULTS = { mirror: true, scale: 0.038, rx: 0.0, ry: 0.68, rz: -0.4, px: 0.12, py: -0.42, pz: -0.27 };
+      // Defaults = current in-game values (akmodel.js)
+      const DEFAULTS = { mirror: true, scale: 0.054, rx: -0.06, ry: 0.08, rz: 0.01, px: 0.12, py: -0.49, pz: -0.1 };
       const state = { ...DEFAULTS };
 
       const TEX = ["view_glove.png","view_skin.png","view_finger.png","QS_AK1.png","QS_AK2.png","QS_AK3.png","QS_AK4.png","QS_AK5.png"];
@@ -125,12 +125,17 @@
         root = obj; holder.add(root); apply();
       });
 
-      // Apply state -> transforms (replicates akmodel.js normalisation + mirror)
+      // Apply state -> transforms (replicates akmodel.js exactly). IMPORTANT:
+      // the game normalises the bbox in UN-mirrored local space and applies the
+      // mirror only for display, so we must compute the bbox with the mirror off
+      // (otherwise the same params land at a different x than in the game).
       function apply() {
         if (!root) return;
         root.position.set(0, 0, 0);
         root.scale.setScalar(state.scale);
         root.rotation.set(state.rx, state.ry, state.rz);
+        mirrorGroup.scale.x = 1;
+        mirrorGroup.updateMatrixWorld(true);
         const box = new THREE.Box3().setFromObject(holder);
         const c = box.getCenter(new THREE.Vector3());
         root.position.x += state.px - c.x;
