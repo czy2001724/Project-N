@@ -16,8 +16,10 @@ const TEX = [
 ];
 
 // --- tunables (adjust after a playtest screenshot) ---
+// The OBJ is baked in the idle pose, which already points the barrel down -Z,
+// so no extra rotation is needed.
 const SCALE = 0.019; // GoldSrc units (~inches) -> metres
-const ROT = new THREE.Euler(0.0, Math.PI / 2, 0.0); // barrel +X -> -Z (into screen)
+const ROT = new THREE.Euler(0.0, 0.0, 0.0);
 const POS = new THREE.Vector3(0.17, -0.2, -0.26); // where the near (hand) end sits
 
 export function loadAK(onReady, onError) {
@@ -67,12 +69,28 @@ export function loadAK(onReady, onError) {
       root.position.y += POS.y - c.y;
       root.position.z += POS.z - box.max.z;
 
-      const box2 = new THREE.Box3().setFromObject(holder);
-      const muzzle = new THREE.Vector3(
-        (box2.min.x + box2.max.x) / 2,
-        (box2.min.y + box2.max.y) / 2,
-        box2.min.z
-      );
+      // Find the muzzle: average of the forward-most (smallest z) vertices, so
+      // the flash sits on the barrel tip rather than the bbox centre.
+      holder.updateMatrixWorld(true);
+      const tmp = new THREE.Vector3();
+      let minZ = Infinity;
+      const pts = [];
+      holder.traverse((o) => {
+        if (!o.isMesh) return;
+        const pos = o.geometry.attributes.position;
+        for (let i = 0; i < pos.count; i += 1) {
+          tmp.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+          pts.push(tmp.clone());
+          if (tmp.z < minZ) minZ = tmp.z;
+        }
+      });
+      let sx = 0;
+      let sy = 0;
+      let n = 0;
+      for (const v of pts) {
+        if (v.z < minZ + 0.04) { sx += v.x; sy += v.y; n += 1; }
+      }
+      const muzzle = new THREE.Vector3(n ? sx / n : 0, n ? sy / n : 0, minZ - 0.02);
       onReady(holder, muzzle);
     },
     undefined,

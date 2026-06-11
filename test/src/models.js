@@ -114,14 +114,46 @@ function arm(handPos, handRot, shoulder, side) {
 const SH_R = V(0.12, -0.46, 0.30);
 const SH_L = V(-0.16, -0.44, 0.26);
 
-// muzzle flash: a flat emissive star, hidden until fired.
+// Soft radial glow texture for the muzzle flash (white-hot core -> orange).
+function makeFlashTex() {
+  const c = document.createElement("canvas");
+  c.width = 128;
+  c.height = 128;
+  const x = c.getContext("2d");
+  const grd = x.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grd.addColorStop(0.0, "rgba(255,255,238,1)");
+  grd.addColorStop(0.22, "rgba(255,224,130,0.95)");
+  grd.addColorStop(0.5, "rgba(255,148,48,0.55)");
+  grd.addColorStop(1.0, "rgba(255,96,24,0)");
+  x.fillStyle = grd;
+  x.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+const FLASH_TEX = makeFlashTex();
+
+// Muzzle flash: additive glowing billboards (cross star + a forward streak),
+// hidden until fired. A shared material drives the fade from the view-model.
 export function makeFlash(pos) {
   const g = new THREE.Group();
   g.position.copy(pos);
-  const mat = new THREE.MeshBasicMaterial({ color: 0xffe7a0, transparent: true, opacity: 0, depthWrite: false });
-  g.add(new THREE.Mesh(new THREE.CircleGeometry(0.09, 16), mat));
-  g.add(new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.05), mat));
-  g.add(new THREE.Mesh(new THREE.PlaneGeometry(0.05, 0.34), mat));
+  const mat = new THREE.MeshBasicMaterial({
+    map: FLASH_TEX,
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    side: THREE.DoubleSide,
+  });
+  const star = new THREE.Mesh(new THREE.PlaneGeometry(0.26, 0.26), mat);
+  g.add(star);
+  const star2 = star.clone();
+  star2.rotation.z = Math.PI / 4;
+  g.add(star2);
+  const streak = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.13), mat);
+  streak.position.z = -0.14; // reach down the barrel
+  g.add(streak);
   g.visible = false;
   g.userData.mat = mat;
   return g;
