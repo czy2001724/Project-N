@@ -30,6 +30,7 @@ function toToon(m) {
     emissiveIntensity: m.emissiveIntensity ?? 1,
     transparent: m.transparent,
     opacity: m.opacity,
+    side: m.side,
   });
   return toon;
 }
