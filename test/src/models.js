@@ -9,6 +9,7 @@ import * as THREE from "three";
 const metal = () => new THREE.MeshStandardMaterial({ color: 0x23272e, roughness: 0.42, metalness: 0.75 });
 const polymer = () => new THREE.MeshStandardMaterial({ color: 0x2b2f36, roughness: 0.75, metalness: 0.15 });
 const accent = () => new THREE.MeshStandardMaterial({ color: 0x6fd0ff, emissive: 0x2a90c0, emissiveIntensity: 0.85, roughness: 0.4 });
+const steel = () => new THREE.MeshStandardMaterial({ color: 0xd2dae2, roughness: 0.22, metalness: 0.92 });
 const gold = () => new THREE.MeshStandardMaterial({ color: 0xe0ab3c, roughness: 0.3, metalness: 0.95, emissive: 0x6b4a08, emissiveIntensity: 0.4 });
 const ember = () => new THREE.MeshStandardMaterial({ color: 0xff5a3c, emissive: 0xff2a14, emissiveIntensity: 1.0, roughness: 0.4 });
 const skin = () => new THREE.MeshStandardMaterial({ color: 0xe6b48c, roughness: 0.7, metalness: 0.0 });
@@ -186,47 +187,25 @@ export function buildKnife() {
   g.add(assembly);
 
   // --- handle / guard / pommel (handle runs along -Y, blade up +Y) ---
-  const redGrip = new THREE.MeshStandardMaterial({ color: 0x7c1418, roughness: 0.5, metalness: 0.4, emissive: 0x2a0405, emissiveIntensity: 0.4 });
-  assembly.add(cylY(0.026, 0.03, 0.17, redGrip, 0, -0.11, 0)); // red grip
+  assembly.add(cylY(0.024, 0.028, 0.16, polymer(), 0, -0.11, 0)); // grip
   for (let i = 0; i < 3; i += 1) {
-    assembly.add(box(0.04, 0.024, 0.04, gold(), 0, -0.165 + i * 0.05, 0).rotateY(Math.PI / 4)); // gold diamond wrap
+    assembly.add(cylY(0.029, 0.029, 0.012, gold(), 0, -0.16 + i * 0.05, 0)); // grip rings
   }
-  assembly.add(joint(V(0, -0.205, 0), 0.036, gold())); // pommel
-  assembly.add(joint(V(0, -0.205, 0.03), 0.013, ember())); // pommel gem
-  // ornate gold crossguard with swept quillons
-  assembly.add(box(0.05, 0.042, 0.07, gold(), 0, -0.02, 0)); // centre block
-  const qL = box(0.1, 0.028, 0.042, gold(), -0.06, -0.005, 0); qL.rotation.z = 0.55; assembly.add(qL);
-  const qR = box(0.1, 0.028, 0.042, gold(), 0.06, -0.005, 0); qR.rotation.z = -0.55; assembly.add(qR);
-  assembly.add(joint(V(0, -0.02, 0.046), 0.013, ember())); // guard gem
+  assembly.add(joint(V(0, -0.2, 0), 0.034, gold())); // pommel
+  assembly.add(box(0.14, 0.035, 0.055, gold(), 0, -0.02, 0)); // crossguard
+  assembly.add(box(0.05, 0.03, 0.07, gold(), 0, -0.02, 0)); // guard centre block
+  assembly.add(box(0.016, 0.016, 0.016, ember(), 0, -0.02, 0.04)); // gem on guard
 
-  // --- blade: a curved single-edged silhouette extruded from a 2D profile,
-  //     deep crimson with gold spine + filigree and a glowing edge (CF look) ---
+  // --- blade (broad face toward +Z, single ornate edge) ---
   const blade = new THREE.Group();
-  const s = new THREE.Shape();
-  s.moveTo(-0.05, 0.0); // spine base
-  s.lineTo(0.055, 0.0); // edge base (ricasso)
-  s.quadraticCurveTo(0.092, 0.18, 0.052, 0.34); // belly curve
-  s.quadraticCurveTo(0.028, 0.45, 0.0, 0.54); // up to the tip
-  s.quadraticCurveTo(-0.028, 0.46, -0.046, 0.32); // spine clip back down
-  s.lineTo(-0.05, 0.1);
-  s.closePath();
-  const geo = new THREE.ExtrudeGeometry(s, { depth: 0.016, bevelEnabled: true, bevelThickness: 0.006, bevelSize: 0.006, bevelSegments: 1 });
-  geo.translate(0, 0, -0.008); // centre the thickness on z = 0
-  const redBlade = new THREE.MeshStandardMaterial({ color: 0x9a121a, roughness: 0.34, metalness: 0.6, emissive: 0x4a0508, emissiveIntensity: 0.55 });
-  blade.add(new THREE.Mesh(geo, redBlade));
-
-  // gold spine rail down the back of the blade
-  const spine = box(0.012, 0.46, 0.03, gold(), -0.05, 0.26, 0);
-  spine.rotation.z = 0.02;
-  blade.add(spine);
-  // glowing cutting edge, angled to follow the belly
-  const edge = box(0.012, 0.5, 0.024, ember(), 0.058, 0.25, 0);
-  edge.rotation.z = -0.07;
-  blade.add(edge);
-  // gold filigree diamonds down the centre face (dragon-etch suggestion)
-  for (let i = 0; i < 4; i += 1) {
-    blade.add(box(0.026, 0.026, 0.02, gold(), 0.0, 0.1 + i * 0.1, 0.011).rotateZ(Math.PI / 4));
-  }
+  blade.add(box(0.06, 0.42, 0.016, steel(), 0, 0.21, 0)); // blade body
+  const tip = new THREE.Mesh(new THREE.ConeGeometry(0.034, 0.16, 4), steel());
+  tip.position.set(0, 0.49, 0);
+  tip.rotation.y = Math.PI / 4; // align the pyramid faces to the blade
+  blade.add(tip);
+  blade.add(box(0.014, 0.4, 0.006, ember(), 0.024, 0.2, 0.006)); // glowing edge line
+  blade.add(box(0.012, 0.34, 0.005, ember(), 0, 0.2, 0.01)); // central fuller glow
+  blade.add(box(0.03, 0.1, 0.012, gold(), 0, 0.06, 0.004)); // ornate ricasso etching
   assembly.add(blade);
 
   // single right hand wrapping the vertical grip
