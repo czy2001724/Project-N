@@ -1,5 +1,6 @@
 import * as THREE from "three";
-import { buildRifle, buildPistol, buildKnife } from "./models.js?v=DEV";
+import { buildRifle, buildPistol, buildKnife, makeFlash } from "./models.js?v=DEV";
+import { loadAK } from "./akmodel.js?v=DEV";
 
 // 3D first-person view-model. Each weapon is a real mesh gripped by rigged arms
 // (see models.js), parented under the camera. A `poseGroup` applies the live
@@ -39,6 +40,23 @@ export function createViewmodel(camera) {
     for (const k of Object.keys(built)) built[k].group.visible = k === id;
     currentId = id;
   }
+
+  // Swap the procedural rifle for the real CS AK view-model once it loads. The
+  // imported model already includes the gloved hands, so it replaces the whole
+  // rifle group. If the load fails we just keep the procedural rifle.
+  loadAK(
+    (holder, muzzle) => {
+      const flash = makeFlash(muzzle);
+      const akGroup = new THREE.Group();
+      akGroup.add(holder);
+      akGroup.add(flash);
+      akGroup.visible = currentId === "rifle";
+      poseGroup.remove(built.rifle.group);
+      poseGroup.add(akGroup);
+      built.rifle = { group: akGroup, muzzle, flash };
+    },
+    (err) => console.warn("AK model failed to load, keeping procedural rifle:", err)
+  );
 
   return {
     setWeapon(id) {

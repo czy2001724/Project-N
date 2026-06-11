@@ -115,7 +115,7 @@ const SH_R = V(0.12, -0.46, 0.30);
 const SH_L = V(-0.16, -0.44, 0.26);
 
 // muzzle flash: a flat emissive star, hidden until fired.
-function makeFlash(pos) {
+export function makeFlash(pos) {
   const g = new THREE.Group();
   g.position.copy(pos);
   const mat = new THREE.MeshBasicMaterial({ color: 0xffe7a0, transparent: true, opacity: 0, depthWrite: false });
