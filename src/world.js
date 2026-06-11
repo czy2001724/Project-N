@@ -1,46 +1,57 @@
 import * as THREE from "three";
+import { techPanel, techFloor, hazardStripes, brushedMetal, holoScreen } from "./textures.js";
 
-// Builds the enclosed home base (hub): vendor + mission NPCs, a deploy door,
-// and a small training range so weapons stay testable. Exposes colliders,
-// raycast solids, training targets and a list of interactables that the
-// interaction system reads each frame.
+// Enclosed sci-fi base ("future ops" look): panelled metal surfaces, holo
+// screens, hazard trims and restrained accent lighting (no bloom). Exposes
+// colliders, raycast solids, training targets and interactables.
 export function createWorld(scene) {
   const ROOM = 16;
   const HEIGHT = 6;
 
-  scene.background = new THREE.Color(0x0c1116);
-  scene.fog = new THREE.Fog(0x0c1116, 30, 80);
+  scene.background = new THREE.Color(0x0b1016);
+  scene.fog = new THREE.Fog(0x0b1016, 32, 82);
 
-  // --- Lighting ---------------------------------------------------------
-  scene.add(new THREE.HemisphereLight(0x9fb8d0, 0x10161c, 0.7));
-
-  const sun = new THREE.DirectionalLight(0xdfe8f5, 0.7);
-  sun.position.set(8, 18, 10);
-  sun.castShadow = true;
-  sun.shadow.mapSize.set(1024, 1024);
-  sun.shadow.camera.near = 1;
-  sun.shadow.camera.far = 60;
-  sun.shadow.camera.left = -26;
-  sun.shadow.camera.right = 26;
-  sun.shadow.camera.top = 26;
-  sun.shadow.camera.bottom = -26;
-  scene.add(sun);
-
-  // Warm interior fill lights.
-  for (const [lx, lz] of [[-7, -5], [7, -5], [0, 8]]) {
-    const lamp = new THREE.PointLight(0x88c8ff, 0.5, 22, 2);
-    lamp.position.set(lx, HEIGHT - 0.6, lz);
+  // --- Lighting (moderate, texture-readable) ---------------------------
+  scene.add(new THREE.HemisphereLight(0xb4cce6, 0x12181f, 0.85));
+  const key = new THREE.DirectionalLight(0xeaf2ff, 0.8);
+  key.position.set(9, 18, 11);
+  key.castShadow = true;
+  key.shadow.mapSize.set(1024, 1024);
+  key.shadow.camera.near = 1;
+  key.shadow.camera.far = 60;
+  key.shadow.camera.left = -26;
+  key.shadow.camera.right = 26;
+  key.shadow.camera.top = 26;
+  key.shadow.camera.bottom = -26;
+  scene.add(key);
+  for (const [lx, lz, col] of [[-8, -5, 0x9cc6ff], [8, -5, 0xffb066], [0, 8, 0x9cc6ff]]) {
+    const lamp = new THREE.PointLight(col, 0.4, 20, 2);
+    lamp.position.set(lx, HEIGHT - 0.8, lz);
     scene.add(lamp);
   }
 
-  // --- Materials --------------------------------------------------------
-  const floorMat = new THREE.MeshStandardMaterial({ color: 0x262d36, roughness: 0.95 });
-  const wallMat = new THREE.MeshStandardMaterial({ color: 0x333c47, roughness: 0.9 });
-  const trimMat = new THREE.MeshStandardMaterial({ color: 0x3f4a58, roughness: 0.7, metalness: 0.3 });
-  const accentMat = new THREE.MeshStandardMaterial({ color: 0x6fd0ff, emissive: 0x2a90c0, emissiveIntensity: 0.9, roughness: 0.4 });
+  // --- Textures + materials --------------------------------------------
+  const floorTex = techFloor();
+  floorTex.repeat.set(12, 12);
+  const wallTex = techPanel();
+  wallTex.repeat.set(8, 2);
+  const ceilTex = brushedMetal("#222a33");
+  ceilTex.repeat.set(8, 8);
+  const metalTex = brushedMetal("#3a4654");
+  const hazardTex = hazardStripes();
+  hazardTex.repeat.set(3, 1);
+
+  const floorMat = new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.7, metalness: 0.35 });
+  const wallMat = new THREE.MeshStandardMaterial({ map: wallTex, roughness: 0.78, metalness: 0.3 });
+  const ceilMat = new THREE.MeshStandardMaterial({ map: ceilTex, roughness: 0.85, metalness: 0.25 });
+  const trimMat = new THREE.MeshStandardMaterial({ map: metalTex, roughness: 0.4, metalness: 0.55 });
+  const hazardMat = new THREE.MeshStandardMaterial({ map: hazardTex, roughness: 0.6, metalness: 0.2 });
+  const cyanMat = new THREE.MeshStandardMaterial({ color: 0x1b6f96, emissive: 0x37b6ff, emissiveIntensity: 0.85, roughness: 0.4 });
+  const orangeMat = new THREE.MeshStandardMaterial({ color: 0x8a4a18, emissive: 0xff8a3c, emissiveIntensity: 0.8, roughness: 0.4 });
 
   const colliders = [];
   const solids = [];
+  const interactables = [];
 
   function add(mesh, asCollider) {
     mesh.castShadow = true;
@@ -63,18 +74,11 @@ export function createWorld(scene) {
   floor.receiveShadow = true;
   scene.add(floor);
   solids.push(floor);
-
-  const ceiling = new THREE.Mesh(new THREE.BoxGeometry(ROOM * 2, 0.2, ROOM * 2), wallMat);
-  ceiling.position.y = HEIGHT;
+  const ceiling = boxMesh(ROOM * 2, 0.2, ROOM * 2, ceilMat, 0, HEIGHT, 0);
   scene.add(ceiling);
   solids.push(ceiling);
 
-  // Subtle floor grid.
-  const grid = new THREE.GridHelper(ROOM * 2, ROOM, 0x2c3a47, 0x1d262e);
-  grid.position.y = 0.02;
-  scene.add(grid);
-
-  // Four walls.
+  // Walls + vertical structural ribs for depth.
   const t = 0.5;
   const walls = [
     [0, -ROOM, ROOM * 2, t],
@@ -84,116 +88,140 @@ export function createWorld(scene) {
   ];
   for (const [x, z, w, d] of walls) add(boxMesh(w, HEIGHT, d, wallMat, x, HEIGHT / 2, z), true);
 
-  // Glowing wall trim strip for the sci-fi base look.
-  for (const [x, z, w, d] of walls) {
-    const strip = boxMesh(w * 0.98, 0.08, d + 0.02, accentMat, x, 1.4, z);
-    if (d > w) strip.scale.set(1, 1, 1); // tall wall: keep
-    scene.add(strip);
+  // structural ribs along each wall
+  for (let i = -ROOM + 4; i <= ROOM - 4; i += 4) {
+    add(boxMesh(0.4, HEIGHT, 0.5, trimMat, i, HEIGHT / 2, -ROOM + 0.4), false);
+    add(boxMesh(0.4, HEIGHT, 0.5, trimMat, i, HEIGHT / 2, ROOM - 0.4), false);
+    add(boxMesh(0.5, HEIGHT, 0.4, trimMat, -ROOM + 0.4, HEIGHT / 2, i), false);
+    add(boxMesh(0.5, HEIGHT, 0.4, trimMat, ROOM - 0.4, HEIGHT / 2, i), false);
   }
+  // thin cyan accent baseboard framing the room
+  scene.add(boxMesh(ROOM * 2 - 1, 0.07, 0.12, cyanMat, 0, 0.3, -ROOM + 0.7));
+  scene.add(boxMesh(ROOM * 2 - 1, 0.07, 0.12, cyanMat, 0, 0.3, ROOM - 0.7));
+  scene.add(boxMesh(0.12, 0.07, ROOM * 2 - 1, cyanMat, -ROOM + 0.7, 0.3, 0));
+  scene.add(boxMesh(0.12, 0.07, ROOM * 2 - 1, cyanMat, ROOM - 0.7, 0.3, 0));
 
-  const interactables = [];
-
-  // --- Helpers: NPC + label --------------------------------------------
+  // --- Holo label + operator NPC ---------------------------------------
   function makeLabel(text, color = "#7fd1ff") {
     const canvas = document.createElement("canvas");
     canvas.width = 256;
     canvas.height = 64;
     const ctx = canvas.getContext("2d");
-    ctx.fillStyle = "rgba(8,14,20,0.66)";
+    ctx.fillStyle = "rgba(8,18,26,0.55)";
     ctx.fillRect(0, 0, 256, 64);
     ctx.strokeStyle = color;
-    ctx.lineWidth = 3;
-    ctx.strokeRect(2, 2, 252, 60);
-    ctx.font = "bold 32px system-ui, sans-serif";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(3, 3, 250, 58);
     ctx.fillStyle = color;
+    ctx.fillRect(3, 3, 6, 58);
+    ctx.font = "bold 30px system-ui, sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(text, 128, 34);
+    ctx.fillText(text, 132, 34);
     const sprite = new THREE.Sprite(
       new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true, depthTest: false })
     );
-    sprite.scale.set(1.8, 0.45, 1);
+    sprite.scale.set(1.9, 0.48, 1);
     return sprite;
   }
 
-  function makeNPC(x, z, faceYaw, suitColor, labelText) {
+  function makeOperator(x, z, faceYaw, suitColor, visorMat, labelText, labelColor) {
     const g = new THREE.Group();
-    const suit = new THREE.MeshStandardMaterial({ color: suitColor, roughness: 0.7 });
-    const skin = new THREE.MeshStandardMaterial({ color: 0xd9b48a, roughness: 0.8 });
-    const dark = new THREE.MeshStandardMaterial({ color: 0x20262e, roughness: 0.8 });
+    const suit = new THREE.MeshStandardMaterial({ color: suitColor, roughness: 0.55, metalness: 0.35 });
+    const plate = new THREE.MeshStandardMaterial({ color: 0x20272f, roughness: 0.5, metalness: 0.5 });
 
-    const torso = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.78, 0.34), suit);
-    torso.position.y = 1.16;
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.17, 16, 16), skin);
-    head.position.y = 1.72;
-    const lLeg = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.75, 0.26), dark);
-    lLeg.position.set(-0.15, 0.38, 0);
-    const rLeg = lLeg.clone();
-    rLeg.position.x = 0.15;
-    const lArm = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.62, 0.18), suit);
-    lArm.position.set(-0.38, 1.18, 0);
-    const rArm = lArm.clone();
-    rArm.position.x = 0.38;
-    for (const part of [torso, head, lLeg, rLeg, lArm, rArm]) {
+    const hips = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.32, 0.3), plate);
+    hips.position.y = 0.92;
+    const chest = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.5, 0.36), suit);
+    chest.position.y = 1.32;
+    const chestPlate = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.34, 0.06), plate);
+    chestPlate.position.set(0, 1.34, 0.2);
+    const neck = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.1, 0.18), plate);
+    neck.position.y = 1.62;
+    const helmet = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.34, 0.36), plate);
+    helmet.position.y = 1.82;
+    const visor = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.1, 0.06), visorMat);
+    visor.position.set(0, 1.82, 0.2);
+    const shoulders = new THREE.Mesh(new THREE.BoxGeometry(0.94, 0.18, 0.36), plate);
+    shoulders.position.y = 1.54;
+
+    const mkLimb = (w, h, d, px, py) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), suit);
+      m.position.set(px, py, 0);
+      return m;
+    };
+    const lArm = mkLimb(0.16, 0.6, 0.2, -0.4, 1.2);
+    const rArm = mkLimb(0.16, 0.6, 0.2, 0.4, 1.2);
+    const lLeg = mkLimb(0.22, 0.78, 0.26, -0.15, 0.4);
+    const rLeg = mkLimb(0.22, 0.78, 0.26, 0.15, 0.4);
+
+    for (const part of [hips, chest, chestPlate, neck, helmet, visor, shoulders, lArm, rArm, lLeg, rLeg]) {
       part.castShadow = true;
       g.add(part);
     }
     g.position.set(x, 0, z);
     g.rotation.y = faceYaw;
     scene.add(g);
-    solids.push(torso, head);
+    solids.push(chest, helmet);
 
-    const label = makeLabel(labelText);
-    label.position.set(x, 2.35, z);
+    const label = makeLabel(labelText, labelColor);
+    label.position.set(x, 2.4, z);
     scene.add(label);
-    return g;
   }
 
   // --- Vendor station (left) -------------------------------------------
-  add(boxMesh(3.2, 1.1, 1.1, trimMat, -8, 0.55, -5), true); // counter
-  add(boxMesh(3.2, 0.1, 1.1, accentMat, -8, 1.12, -5), false); // glowing counter top
-  makeNPC(-8, -6, 0, 0x3a6ea5, "商人");
+  add(boxMesh(3.4, 1.1, 1.2, trimMat, -8, 0.55, -5), true);
+  add(boxMesh(3.4, 0.08, 1.2, cyanMat, -8, 1.12, -5), false); // glowing counter edge
+  const armoryScreen = holoScreen("ARMORY", 4, "#7fd1ff");
+  add(boxMesh(3.0, 0.7, 0.08, new THREE.MeshStandardMaterial({ map: armoryScreen, emissiveMap: armoryScreen, emissive: 0xffffff, emissiveIntensity: 0.9, color: 0x0a1a26 }), -8, 0.7, -4.45), false);
+  makeOperator(-8, -6, 0, 0x2f5d86, cyanMat, "商人 · 军械", "#7fd1ff");
   interactables.push({ name: "商人 · 装备售卖", action: "vendor", pos: new THREE.Vector3(-8, 0, -3.6), radius: 3 });
 
-  // --- Mission station (right) -----------------------------------------
-  add(boxMesh(3.2, 1.1, 1.1, trimMat, 8, 0.55, -5), true);
-  add(boxMesh(1.4, 2.0, 0.2, trimMat, 8, 1.6, -5.9), false); // mission board
-  add(boxMesh(1.2, 1.7, 0.06, accentMat, 8, 1.65, -5.78), false);
-  makeNPC(8, -6, 0, 0x9a6a2f, "任务官");
+  // --- Mission station (right) — holo board ----------------------------
+  add(boxMesh(3.4, 1.1, 1.2, trimMat, 8, 0.55, -5), true);
+  add(boxMesh(2.6, 2.4, 0.18, trimMat, 8, 2.0, -5.9), false); // board frame
+  const missionScreen = holoScreen("MISSIONS", 5, "#ffb066");
+  add(boxMesh(2.3, 2.1, 0.06, new THREE.MeshStandardMaterial({ map: missionScreen, emissiveMap: missionScreen, emissive: 0xffffff, emissiveIntensity: 0.95, color: 0x0a1018 }), 8, 2.0, -5.78), false);
+  makeOperator(8, -6, 0, 0x6a4a22, orangeMat, "任务官 · 行动", "#ffc070");
   interactables.push({ name: "任务官 · 任务接取", action: "mission", pos: new THREE.Vector3(8, 0, -3.6), radius: 3 });
 
   // --- Deploy door (far wall) ------------------------------------------
-  const doorFrame = add(boxMesh(3.8, 4.4, 0.3, trimMat, 0, 2.2, -ROOM + 0.35), false);
-  const doorPanel = boxMesh(3.2, 3.9, 0.18, new THREE.MeshStandardMaterial({ color: 0x1c242c, roughness: 0.5, metalness: 0.5 }), 0, 2.0, -ROOM + 0.5);
+  add(boxMesh(4.0, 4.6, 0.4, trimMat, 0, 2.3, -ROOM + 0.35), false); // frame
+  add(boxMesh(4.2, 0.5, 0.45, hazardMat, 0, 4.7, -ROOM + 0.32), false); // hazard header
+  const doorScreen = holoScreen("DEPLOY", 3, "#ffd23f");
+  const doorMat = new THREE.MeshStandardMaterial({ map: doorScreen, emissiveMap: doorScreen, emissive: 0xffffff, emissiveIntensity: 0.8, color: 0x0a1018, roughness: 0.4, metalness: 0.4 });
+  const doorPanel = boxMesh(3.2, 3.8, 0.18, doorMat, 0, 2.0, -ROOM + 0.55);
   scene.add(doorPanel);
   solids.push(doorPanel);
-  // door accent lines
-  add(boxMesh(3.3, 0.12, 0.2, accentMat, 0, 3.9, -ROOM + 0.55), false);
-  add(boxMesh(0.12, 3.9, 0.2, accentMat, 0, 2.0, -ROOM + 0.55), false);
+  add(boxMesh(3.4, 0.1, 0.2, orangeMat, 0, 3.95, -ROOM + 0.6), false);
+  add(boxMesh(0.1, 3.9, 0.2, orangeMat, -1.7, 2.0, -ROOM + 0.6), false);
+  add(boxMesh(0.1, 3.9, 0.2, orangeMat, 1.7, 2.0, -ROOM + 0.6), false);
   const doorLabel = makeLabel("部署门 · 选择副本", "#ffd23f");
-  doorLabel.position.set(0, 4.7, -ROOM + 0.6);
+  doorLabel.position.set(0, 4.95, -ROOM + 0.7);
   scene.add(doorLabel);
   interactables.push({ name: "部署门 · 选择副本", action: "deploy", pos: new THREE.Vector3(0, 0, -ROOM + 2.2), radius: 3.5 });
 
-  // crates for cover / decoration
-  for (const [x, z] of [[-12, 8], [-10.5, 9.5], [11, 7], [12, 9]]) {
-    add(boxMesh(1.4, 1.4, 1.4, trimMat, x, 0.7, z), true);
+  // supply crates (metal body, hazard-striped top)
+  for (const [x, z] of [[-12, 8], [-10.4, 9.6], [11, 7], [12.3, 9]]) {
+    add(boxMesh(1.4, 1.3, 1.4, trimMat, x, 0.65, z), true);
+    add(boxMesh(1.42, 0.16, 1.42, hazardMat, x, 1.32, z), false);
   }
 
   // --- Training range (behind spawn) -----------------------------------
   const TARGET_HP = 30;
   const RESPAWN_DELAY = 1.5;
-  const targetGeo = new THREE.IcosahedronGeometry(0.5, 0);
+  const targetGeo = new THREE.OctahedronGeometry(0.55, 0);
   const targets = [];
-  const trainSpots = [[-4, 13], [0, 13.6], [4, 13]];
-  add(boxMesh(12, 0.6, 0.4, trimMat, 0, 0.3, 11.5), true); // range barrier
+  add(boxMesh(12, 0.7, 0.4, trimMat, 0, 0.35, 11.5), true);
+  add(boxMesh(12, 0.1, 0.45, cyanMat, 0, 0.72, 11.5), false);
   const rangeLabel = makeLabel("训练靶场", "#8effb0");
   rangeLabel.position.set(0, 3.2, 14.5);
   scene.add(rangeLabel);
 
+  const trainSpots = [[-4, 13], [0, 13.6], [4, 13]];
   for (let i = 0; i < trainSpots.length; i += 1) {
     const [tx, tz] = trainSpots[i];
-    const mat = new THREE.MeshStandardMaterial({ color: 0xff6b4a, emissive: 0xff3b1a, emissiveIntensity: 0.6, roughness: 0.4 });
+    const mat = new THREE.MeshStandardMaterial({ color: 0xc7402a, emissive: 0xff5a3c, emissiveIntensity: 0.6, roughness: 0.4, metalness: 0.3 });
     const mesh = new THREE.Mesh(targetGeo, mat);
     mesh.castShadow = true;
     mesh.position.set(tx, 1.6, tz);
@@ -231,10 +259,10 @@ export function createWorld(scene) {
       const d = mesh.userData;
       if (d.alive) {
         mesh.position.y = d.baseY + Math.sin(state.time * 2 + d.phase) * 0.25;
-        mesh.rotation.y += dt * 1.2;
+        mesh.rotation.y += dt * 1.4;
         if (d.hitFlash > 0) {
           d.hitFlash = Math.max(0, d.hitFlash - dt * 4);
-          mesh.material.emissiveIntensity = 0.6 + d.hitFlash * 1.6;
+          mesh.material.emissiveIntensity = 0.6 + d.hitFlash * 1.4;
         }
       } else if (state.time >= d.respawnAt) {
         d.alive = true;
