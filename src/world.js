@@ -13,8 +13,8 @@ export function createWorld(scene) {
   scene.fog = new THREE.Fog(0x0c1622, 36, 92);
 
   // --- Lighting --------------------------------------------------------
-  scene.add(new THREE.HemisphereLight(0xcfe6ff, 0x1a2433, 1.0));
-  const key = new THREE.DirectionalLight(0xf2f8ff, 0.95);
+  scene.add(new THREE.HemisphereLight(0xcfe6ff, 0x1a2433, 0.8));
+  const key = new THREE.DirectionalLight(0xf2f8ff, 0.8);
   key.position.set(8, 20, 12);
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
@@ -26,7 +26,7 @@ export function createWorld(scene) {
   key.shadow.camera.bottom = -28;
   scene.add(key);
   for (const [lx, lz, col] of [[-9, -4, 0x59c8ff], [9, -4, 0xffac4d], [0, 8, 0x59c8ff], [0, -10, 0x6affc0]]) {
-    const lamp = new THREE.PointLight(col, 0.55, 24, 2);
+    const lamp = new THREE.PointLight(col, 0.28, 22, 2);
     lamp.position.set(lx, HEIGHT - 1.0, lz);
     scene.add(lamp);
   }
@@ -48,9 +48,9 @@ export function createWorld(scene) {
   const panelMat = new THREE.MeshStandardMaterial({ map: metalTex, roughness: 0.45, metalness: 0.4 });
   const darkMat = new THREE.MeshStandardMaterial({ color: 0x232c38, roughness: 0.6, metalness: 0.4 });
   const hazardMat = new THREE.MeshStandardMaterial({ map: hazardTex, roughness: 0.6, metalness: 0.2 });
-  const cyan = new THREE.MeshStandardMaterial({ color: 0x36c4ff, emissive: 0x36c4ff, emissiveIntensity: 1.4, roughness: 0.4 });
-  const orange = new THREE.MeshStandardMaterial({ color: 0xff9a3c, emissive: 0xff8a2c, emissiveIntensity: 1.35, roughness: 0.4 });
-  const mint = new THREE.MeshStandardMaterial({ color: 0x46ffb0, emissive: 0x40f0a0, emissiveIntensity: 1.3, roughness: 0.4 });
+  const cyan = new THREE.MeshStandardMaterial({ color: 0x36c4ff, emissive: 0x36c4ff, emissiveIntensity: 0.7, roughness: 0.4 });
+  const orange = new THREE.MeshStandardMaterial({ color: 0xff9a3c, emissive: 0xff8a2c, emissiveIntensity: 0.7, roughness: 0.4 });
+  const mint = new THREE.MeshStandardMaterial({ color: 0x46ffb0, emissive: 0x40f0a0, emissiveIntensity: 0.65, roughness: 0.4 });
   const field = new THREE.MeshStandardMaterial({ color: 0x49c0ff, emissive: 0x49c0ff, emissiveIntensity: 0.7, transparent: true, opacity: 0.28, roughness: 0.3 });
   const glass = new THREE.MeshStandardMaterial({ color: 0x8fd8ff, emissive: 0x3aa0e0, emissiveIntensity: 0.4, transparent: true, opacity: 0.22, roughness: 0.2 });
 

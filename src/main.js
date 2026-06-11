@@ -31,7 +31,7 @@ const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
 // gentle bloom for energy/holo glow only
 composer.addPass(
-  new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.3, 0.5, 0.85)
+  new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.14, 0.4, 1.0)
 );
 composer.addPass(new OutputPass());
 composer.addPass(new SMAAPass(window.innerWidth, window.innerHeight)); // crisp line art
