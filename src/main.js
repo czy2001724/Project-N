@@ -1,4 +1,9 @@
 import * as THREE from "three";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { createWorld } from "./world.js";
 import { createPlayer } from "./player.js";
 import { createWeapons } from "./weapons.js";
@@ -10,14 +15,32 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
 document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.08, 200);
 scene.add(camera); // camera holds the weapon view-model
 
+// Neutral image-based lighting so PBR materials get soft reflections.
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
 const world = createWorld(scene);
 const player = createPlayer(camera, world);
+
+// --- Post-processing: bloom for the neon accents ------------------------
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(
+  new THREE.Vector2(window.innerWidth, window.innerHeight),
+  0.65, // strength
+  0.5, // radius
+  0.82 // threshold — only bright/emissive pixels bloom
+);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
 
 // HUD elements
 const overlay = document.getElementById("overlay");
@@ -151,6 +174,7 @@ window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  composer.setSize(window.innerWidth, window.innerHeight);
 });
 
 // --- HUD ----------------------------------------------------------------
@@ -176,7 +200,7 @@ function animate(now) {
     updateInteraction();
   }
 
-  renderer.render(scene, camera);
+  composer.render();
   updateHUD();
   requestAnimationFrame(animate);
 }

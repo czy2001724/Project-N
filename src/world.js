@@ -34,10 +34,11 @@ export function createWorld(scene) {
   }
 
   // --- Materials --------------------------------------------------------
-  const floorMat = new THREE.MeshStandardMaterial({ color: 0x262d36, roughness: 0.95 });
-  const wallMat = new THREE.MeshStandardMaterial({ color: 0x333c47, roughness: 0.9 });
-  const trimMat = new THREE.MeshStandardMaterial({ color: 0x3f4a58, roughness: 0.7, metalness: 0.3 });
-  const accentMat = new THREE.MeshStandardMaterial({ color: 0x6fd0ff, emissive: 0x2a90c0, emissiveIntensity: 0.9, roughness: 0.4 });
+  const floorMat = new THREE.MeshStandardMaterial({ color: 0x1b212a, roughness: 0.42, metalness: 0.62 });
+  const wallMat = new THREE.MeshStandardMaterial({ color: 0x2b333d, roughness: 0.82, metalness: 0.2 });
+  const trimMat = new THREE.MeshStandardMaterial({ color: 0x47525f, roughness: 0.5, metalness: 0.6 });
+  const accentMat = new THREE.MeshStandardMaterial({ color: 0x8fe3ff, emissive: 0x39b6ff, emissiveIntensity: 2.2, roughness: 0.3, metalness: 0.2 });
+  const panelMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xc4e6ff, emissiveIntensity: 3.0 });
 
   const colliders = [];
   const solids = [];
@@ -73,6 +74,20 @@ export function createWorld(scene) {
   const grid = new THREE.GridHelper(ROOM * 2, ROOM, 0x2c3a47, 0x1d262e);
   grid.position.y = 0.02;
   scene.add(grid);
+
+  // Glowing ceiling light fixtures (bloom) over each zone.
+  for (const [lx, lz] of [[-7, -5], [7, -5], [0, 8], [0, -9]]) {
+    const fixture = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.14, 1.0), panelMat);
+    fixture.position.set(lx, HEIGHT - 0.16, lz);
+    scene.add(fixture);
+  }
+
+  // Emissive floor strips running down the room for a sci-fi walkway feel.
+  for (const x of [-9, 0, 9]) {
+    const strip = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.04, ROOM * 1.7), accentMat);
+    strip.position.set(x, 0.03, 0);
+    scene.add(strip);
+  }
 
   // Four walls.
   const t = 0.5;
@@ -193,7 +208,7 @@ export function createWorld(scene) {
 
   for (let i = 0; i < trainSpots.length; i += 1) {
     const [tx, tz] = trainSpots[i];
-    const mat = new THREE.MeshStandardMaterial({ color: 0xff6b4a, emissive: 0xff3b1a, emissiveIntensity: 0.6, roughness: 0.4 });
+    const mat = new THREE.MeshStandardMaterial({ color: 0xff6b4a, emissive: 0xff3b1a, emissiveIntensity: 1.3, roughness: 0.4 });
     const mesh = new THREE.Mesh(targetGeo, mat);
     mesh.castShadow = true;
     mesh.position.set(tx, 1.6, tz);
@@ -234,13 +249,13 @@ export function createWorld(scene) {
         mesh.rotation.y += dt * 1.2;
         if (d.hitFlash > 0) {
           d.hitFlash = Math.max(0, d.hitFlash - dt * 4);
-          mesh.material.emissiveIntensity = 0.6 + d.hitFlash * 1.6;
+          mesh.material.emissiveIntensity = 1.3 + d.hitFlash * 2.0;
         }
       } else if (state.time >= d.respawnAt) {
         d.alive = true;
         d.health = d.maxHealth;
         d.hitFlash = 0;
-        mesh.material.emissiveIntensity = 0.6;
+        mesh.material.emissiveIntensity = 1.3;
         mesh.position.copy(d.home);
         mesh.visible = true;
       }
