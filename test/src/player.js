@@ -86,6 +86,7 @@ export function createPlayer(camera, world) {
     state.crouching = keys.has("ControlLeft") || keys.has("ControlRight");
     const moving =
       keys.has("KeyW") || keys.has("KeyA") || keys.has("KeyS") || keys.has("KeyD");
+    state.moving = moving;
     // Sprint is derived from input every frame (held Shift), decoupled from
     // jumping: holding Shift in mid-air simply makes sprint engage the moment
     // you land. Only a *new* Space press while W+Shift are held can be blocked

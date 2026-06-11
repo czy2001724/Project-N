@@ -14,7 +14,7 @@ const DEFS = [
 export function createWeapons(camera, scene, world, player, hooks = {}) {
   const ray = new THREE.Raycaster();
   const screenCenter = new THREE.Vector2(0, 0);
-  const vm = createViewmodel(); // 2D image view-model (hands + weapon)
+  const vm = createViewmodel(camera); // 3D rigged view-model (arms + weapon)
 
   // Camera-attached muzzle light: lights the scene briefly on fire.
   const muzzle = new THREE.PointLight(0xffd070, 0, 8, 2);
@@ -158,33 +158,46 @@ export function createWeapons(camera, scene, world, player, hooks = {}) {
     let reloadDip = 0;
     if (w.reloading) reloadDip = Math.sin(Math.min(1, (time - w.reloadStart) / w.def.reload) * Math.PI);
 
-    // --- compose the 2D view-model pose (screen pixels / degrees) ---
-    let tx = 0;
-    let ty = 0;
-    let rot = 0;
-    let scale = 1;
+    // --- compose the 3D view-model pose (metres / radians) ---
+    let posX = 0;
+    let posY = 0;
+    let posZ = 0;
+    let rotX = 0;
+    let rotY = 0;
+    let rotZ = 0;
 
-    ty += equipT * 280; // slide down off-screen while switching
-    ty += reloadDip * 90; // dip while reloading
-    rot += reloadDip * 8;
+    // subtle idle / walk sway so the rig feels alive
+    const moving = player.state && player.state.moving;
+    const bob = moving ? 1 : 0.35;
+    posX += Math.sin(time * 1.6) * 0.004 * bob;
+    posY += Math.sin(time * 3.2) * 0.003 * bob;
+    rotZ += Math.sin(time * 1.6) * 0.01 * bob;
+
+    posY -= equipT * 0.5; // drop the weapon off-screen while switching
+    rotX -= equipT * 1.1;
+    posY -= reloadDip * 0.18; // dip + tilt while reloading
+    rotX -= reloadDip * 0.55;
+    rotZ += reloadDip * 0.3;
 
     if (w.def.mode === "melee") {
       if (w.swing > 0.001) {
         const a = 1 - w.swing; // 0 -> 1 over the attack
-        tx += -150 + a * 320; // sweep left -> right
-        ty += 70 - a * 170; // low -> up
-        rot += -26 + a * 78; // rotate through the slash
+        posX += -0.14 + a * 0.3; // sweep left -> right
+        posY += 0.06 - a * 0.16; // low -> up
+        rotZ += -0.5 + a * 1.25; // rotate through the slash
+        rotX += a * 0.35;
         vm.setBladeDrawn(true);
       } else {
         vm.setBladeDrawn(false);
       }
     } else {
-      ty += -w.recoil * 520; // recoil kick up
-      rot += -w.recoil * 24;
-      scale += w.recoil * 0.4;
+      posZ += w.recoil * 0.65; // recoil kicks the weapon back toward the eye
+      rotX += w.recoil * 1.6; // muzzle climb
+      posY += w.recoil * 0.05;
     }
 
-    vm.setPose({ tx, ty, rot, scale });
+    vm.setPose({ posX, posY, posZ, rotX, rotY, rotZ });
+    vm.tick(dt);
 
     // fade impact sparks
     for (let i = impacts.length - 1; i >= 0; i -= 1) {
