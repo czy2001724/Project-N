@@ -1,5 +1,4 @@
 import * as THREE from "three";
-import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
@@ -9,6 +8,7 @@ import { createWorld } from "./world.js?v=DEV";
 import { createPlayer } from "./player.js?v=DEV";
 import { createWeapons } from "./weapons.js?v=DEV";
 import { createUI } from "./ui.js?v=DEV";
+import { toonify } from "./toonify.js?v=DEV";
 
 // --- Renderer / scene / camera ------------------------------------------
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -16,30 +16,25 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.0;
+renderer.toneMapping = THREE.NoToneMapping; // flat, saturated anime colours
 document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.08, 200);
 scene.add(camera); // camera holds the weapon view-model
 
-// Image-based lighting for realistic PBR reflections.
-const pmrem = new THREE.PMREMGenerator(renderer);
-scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-
 const world = createWorld(scene);
 const player = createPlayer(camera, world);
 
-// --- Post-processing: cinematic, restrained ----------------------------
+// --- Post-processing: clean anime presentation -------------------------
 const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
-// subtle bloom — only genuinely bright emissive pixels glow
+// gentle bloom for energy/holo glow only
 composer.addPass(
-  new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.32, 0.6, 1.0)
+  new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.3, 0.5, 0.85)
 );
-composer.addPass(new OutputPass()); // tone mapping + color space
-composer.addPass(new SMAAPass(window.innerWidth, window.innerHeight)); // clean edges
+composer.addPass(new OutputPass());
+composer.addPass(new SMAAPass(window.innerWidth, window.innerHeight)); // crisp line art
 
 // HUD elements
 const overlay = document.getElementById("overlay");
@@ -61,6 +56,10 @@ const weapons = createWeapons(camera, scene, world, player, {
     hitmarker.classList.add("show");
   },
 });
+
+// Apply the anime / cel-shaded look once everything is built.
+toonify(scene, { outlineMaxRadius: 5, outlineScale: 1.045 });
+toonify(camera, { outlineMaxRadius: Infinity, outlineScale: 1.03 }); // weapon view-model
 
 const ui = createUI({
   onResume: () => requestLock(),
