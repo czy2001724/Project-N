@@ -38,10 +38,11 @@ esbuild.buildSync({
 // 3) embed the AK assets (OBJ string + texture data URIs)
 const AK = path.join(GAME, "assets", "ak");
 const TEX = ["view_glove.png", "view_skin.png", "view_finger.png", "QS_AK1.png", "QS_AK2.png", "QS_AK3.png", "QS_AK4.png", "QS_AK5.png"];
-const obj = fs.readFileSync(path.join(AK, "v_ak47.obj"), "utf8");
+const gun = fs.readFileSync(path.join(AK, "v_ak47_gun.obj"), "utf8");
+const arms = fs.readFileSync(path.join(AK, "v_ak47_arms.obj"), "utf8");
 const tex = {};
 for (const t of TEX) tex[t] = "data:image/png;base64," + fs.readFileSync(path.join(AK, t)).toString("base64");
-fs.writeFileSync(path.join(APP, "embedded-assets.js"), "window.__PN_AK_ASSETS__ = " + JSON.stringify({ obj, tex }) + ";\n");
+fs.writeFileSync(path.join(APP, "embedded-assets.js"), "window.__PN_AK_ASSETS__ = " + JSON.stringify({ gun, arms, tex }) + ";\n");
 
 // 4) styles + index.html (classic scripts instead of importmap/module)
 fs.copyFileSync(path.join(GAME, "styles.css"), path.join(APP, "styles.css"));
