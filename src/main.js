@@ -27,6 +27,7 @@ const scoreEl = document.getElementById("score");
 const ammoEl = document.getElementById("ammo");
 const healthEl = document.getElementById("health");
 const weaponEl = document.getElementById("weapon");
+const sprintEl = document.getElementById("sprint");
 
 const weapons = createWeapons(camera, scene, world, player, {
   onHitmarker() {
@@ -46,6 +47,7 @@ function onKeyDown(e) {
   }
   player.keys.add(e.code);
   if (e.code === "Space" && !e.repeat) player.queueJump();
+  if ((e.code === "ShiftLeft" || e.code === "ShiftRight") && !e.repeat) player.toggleSprint();
   if (e.code === "KeyR") weapons.reload();
   if (e.code === "Digit1") weapons.select(0);
   if (e.code === "Digit2") weapons.select(1);
@@ -113,6 +115,7 @@ function updateHUD() {
   const hud = weapons.getHUD();
   weaponEl.textContent = hud.name;
   ammoEl.textContent = hud.ammoText;
+  sprintEl.textContent = player.state.sprintToggled ? "开" : "关";
   healthEl.textContent = String(Math.round(player.state.health));
 }
 
