@@ -1,47 +1,63 @@
 import * as THREE from "three";
 
-// Builds the arena, lighting, cover boxes and shootable targets.
-// Returns an object that owns the world state and exposes helpers the
-// rest of the game uses (collision boxes, hittable meshes, scoring).
+// Builds the enclosed home base (hub): vendor + mission NPCs, a deploy door,
+// and a small training range so weapons stay testable. Exposes colliders,
+// raycast solids, training targets and a list of interactables that the
+// interaction system reads each frame.
 export function createWorld(scene) {
-  const ROOM = 18; // half-extent of the floor
+  const ROOM = 16;
   const HEIGHT = 6;
 
-  scene.background = new THREE.Color(0x0e1418);
-  scene.fog = new THREE.Fog(0x0e1418, 26, 75);
+  scene.background = new THREE.Color(0x0c1116);
+  scene.fog = new THREE.Fog(0x0c1116, 30, 80);
 
   // --- Lighting ---------------------------------------------------------
-  scene.add(new THREE.HemisphereLight(0x9fb8d0, 0x141a20, 0.85));
+  scene.add(new THREE.HemisphereLight(0x9fb8d0, 0x10161c, 0.7));
 
-  const sun = new THREE.DirectionalLight(0xfff0d8, 1.15);
-  sun.position.set(10, 18, 8);
+  const sun = new THREE.DirectionalLight(0xdfe8f5, 0.7);
+  sun.position.set(8, 18, 10);
   sun.castShadow = true;
   sun.shadow.mapSize.set(1024, 1024);
   sun.shadow.camera.near = 1;
   sun.shadow.camera.far = 60;
-  sun.shadow.camera.left = -28;
-  sun.shadow.camera.right = 28;
-  sun.shadow.camera.top = 28;
-  sun.shadow.camera.bottom = -28;
+  sun.shadow.camera.left = -26;
+  sun.shadow.camera.right = 26;
+  sun.shadow.camera.top = 26;
+  sun.shadow.camera.bottom = -26;
   scene.add(sun);
 
+  // Warm interior fill lights.
+  for (const [lx, lz] of [[-7, -5], [7, -5], [0, 8]]) {
+    const lamp = new THREE.PointLight(0x88c8ff, 0.5, 22, 2);
+    lamp.position.set(lx, HEIGHT - 0.6, lz);
+    scene.add(lamp);
+  }
+
   // --- Materials --------------------------------------------------------
-  const floorMat = new THREE.MeshStandardMaterial({ color: 0x2c343f, roughness: 0.96 });
-  const wallMat = new THREE.MeshStandardMaterial({ color: 0x3c4654, roughness: 0.9 });
-  const boxMat = new THREE.MeshStandardMaterial({ color: 0x5b6675, roughness: 0.82 });
+  const floorMat = new THREE.MeshStandardMaterial({ color: 0x262d36, roughness: 0.95 });
+  const wallMat = new THREE.MeshStandardMaterial({ color: 0x333c47, roughness: 0.9 });
+  const trimMat = new THREE.MeshStandardMaterial({ color: 0x3f4a58, roughness: 0.7, metalness: 0.3 });
+  const accentMat = new THREE.MeshStandardMaterial({ color: 0x6fd0ff, emissive: 0x2a90c0, emissiveIntensity: 0.9, roughness: 0.4 });
 
-  const colliders = []; // THREE.Box3 used for player movement
-  const solids = []; // meshes used as raycast backstops (walls/cover/floor)
+  const colliders = [];
+  const solids = [];
 
-  function addSolid(mesh, asCollider) {
+  function add(mesh, asCollider) {
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     scene.add(mesh);
     solids.push(mesh);
     if (asCollider) colliders.push(new THREE.Box3().setFromObject(mesh));
+    return mesh;
   }
 
-  // Floor + ceiling (not collidable — the player is clamped to the room).
+  function boxMesh(w, h, d, mat, x, y, z) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+    m.position.set(x, y, z);
+    return m;
+  }
+
+  // Floor + ceiling.
   const floor = new THREE.Mesh(new THREE.BoxGeometry(ROOM * 2, 0.2, ROOM * 2), floorMat);
   floor.position.y = -0.1;
   floor.receiveShadow = true;
@@ -53,92 +69,141 @@ export function createWorld(scene) {
   scene.add(ceiling);
   solids.push(ceiling);
 
-  // Sci-fi grid overlay on the floor.
-  const grid = new THREE.GridHelper(ROOM * 2, ROOM * 2, 0x35657f, 0x1f2a33);
+  // Subtle floor grid.
+  const grid = new THREE.GridHelper(ROOM * 2, ROOM, 0x2c3a47, 0x1d262e);
   grid.position.y = 0.02;
   scene.add(grid);
 
-  // Four boundary walls.
-  const t = 0.4;
+  // Four walls.
+  const t = 0.5;
   const walls = [
     [0, -ROOM, ROOM * 2, t],
     [0, ROOM, ROOM * 2, t],
     [-ROOM, 0, t, ROOM * 2],
     [ROOM, 0, t, ROOM * 2],
   ];
+  for (const [x, z, w, d] of walls) add(boxMesh(w, HEIGHT, d, wallMat, x, HEIGHT / 2, z), true);
+
+  // Glowing wall trim strip for the sci-fi base look.
   for (const [x, z, w, d] of walls) {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(w, HEIGHT, d), wallMat);
-    m.position.set(x, HEIGHT / 2, z);
-    addSolid(m, true);
+    const strip = boxMesh(w * 0.98, 0.08, d + 0.02, accentMat, x, 1.4, z);
+    if (d > w) strip.scale.set(1, 1, 1); // tall wall: keep
+    scene.add(strip);
   }
 
-  // Cover boxes scattered around the arena.
-  const covers = [
-    [-5, 2, 3, 2.2, 3],
-    [5, -4, 4, 3, 4],
-    [-1, -8, 2.5, 1.8, 2.5],
-    [8, 6, 3, 2.6, 3],
-    [-9, -3, 2, 1.4, 2],
-  ];
-  for (const [x, z, w, h, d] of covers) {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), boxMat);
-    m.position.set(x, h / 2, z);
-    addSolid(m, true);
+  const interactables = [];
+
+  // --- Helpers: NPC + label --------------------------------------------
+  function makeLabel(text, color = "#7fd1ff") {
+    const canvas = document.createElement("canvas");
+    canvas.width = 256;
+    canvas.height = 64;
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "rgba(8,14,20,0.66)";
+    ctx.fillRect(0, 0, 256, 64);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 3;
+    ctx.strokeRect(2, 2, 252, 60);
+    ctx.font = "bold 32px system-ui, sans-serif";
+    ctx.fillStyle = color;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, 128, 34);
+    const sprite = new THREE.Sprite(
+      new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true, depthTest: false })
+    );
+    sprite.scale.set(1.8, 0.45, 1);
+    return sprite;
   }
 
-  // --- Targets ----------------------------------------------------------
-  const TARGET_COUNT = 6;
+  function makeNPC(x, z, faceYaw, suitColor, labelText) {
+    const g = new THREE.Group();
+    const suit = new THREE.MeshStandardMaterial({ color: suitColor, roughness: 0.7 });
+    const skin = new THREE.MeshStandardMaterial({ color: 0xd9b48a, roughness: 0.8 });
+    const dark = new THREE.MeshStandardMaterial({ color: 0x20262e, roughness: 0.8 });
+
+    const torso = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.78, 0.34), suit);
+    torso.position.y = 1.16;
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.17, 16, 16), skin);
+    head.position.y = 1.72;
+    const lLeg = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.75, 0.26), dark);
+    lLeg.position.set(-0.15, 0.38, 0);
+    const rLeg = lLeg.clone();
+    rLeg.position.x = 0.15;
+    const lArm = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.62, 0.18), suit);
+    lArm.position.set(-0.38, 1.18, 0);
+    const rArm = lArm.clone();
+    rArm.position.x = 0.38;
+    for (const part of [torso, head, lLeg, rLeg, lArm, rArm]) {
+      part.castShadow = true;
+      g.add(part);
+    }
+    g.position.set(x, 0, z);
+    g.rotation.y = faceYaw;
+    scene.add(g);
+    solids.push(torso, head);
+
+    const label = makeLabel(labelText);
+    label.position.set(x, 2.35, z);
+    scene.add(label);
+    return g;
+  }
+
+  // --- Vendor station (left) -------------------------------------------
+  add(boxMesh(3.2, 1.1, 1.1, trimMat, -8, 0.55, -5), true); // counter
+  add(boxMesh(3.2, 0.1, 1.1, accentMat, -8, 1.12, -5), false); // glowing counter top
+  makeNPC(-8, -6, 0, 0x3a6ea5, "商人");
+  interactables.push({ name: "商人 · 装备售卖", action: "vendor", pos: new THREE.Vector3(-8, 0, -3.6), radius: 3 });
+
+  // --- Mission station (right) -----------------------------------------
+  add(boxMesh(3.2, 1.1, 1.1, trimMat, 8, 0.55, -5), true);
+  add(boxMesh(1.4, 2.0, 0.2, trimMat, 8, 1.6, -5.9), false); // mission board
+  add(boxMesh(1.2, 1.7, 0.06, accentMat, 8, 1.65, -5.78), false);
+  makeNPC(8, -6, 0, 0x9a6a2f, "任务官");
+  interactables.push({ name: "任务官 · 任务接取", action: "mission", pos: new THREE.Vector3(8, 0, -3.6), radius: 3 });
+
+  // --- Deploy door (far wall) ------------------------------------------
+  const doorFrame = add(boxMesh(3.8, 4.4, 0.3, trimMat, 0, 2.2, -ROOM + 0.35), false);
+  const doorPanel = boxMesh(3.2, 3.9, 0.18, new THREE.MeshStandardMaterial({ color: 0x1c242c, roughness: 0.5, metalness: 0.5 }), 0, 2.0, -ROOM + 0.5);
+  scene.add(doorPanel);
+  solids.push(doorPanel);
+  // door accent lines
+  add(boxMesh(3.3, 0.12, 0.2, accentMat, 0, 3.9, -ROOM + 0.55), false);
+  add(boxMesh(0.12, 3.9, 0.2, accentMat, 0, 2.0, -ROOM + 0.55), false);
+  const doorLabel = makeLabel("部署门 · 选择副本", "#ffd23f");
+  doorLabel.position.set(0, 4.7, -ROOM + 0.6);
+  scene.add(doorLabel);
+  interactables.push({ name: "部署门 · 选择副本", action: "deploy", pos: new THREE.Vector3(0, 0, -ROOM + 2.2), radius: 3.5 });
+
+  // crates for cover / decoration
+  for (const [x, z] of [[-12, 8], [-10.5, 9.5], [11, 7], [12, 9]]) {
+    add(boxMesh(1.4, 1.4, 1.4, trimMat, x, 0.7, z), true);
+  }
+
+  // --- Training range (behind spawn) -----------------------------------
   const TARGET_HP = 30;
-  const RESPAWN_DELAY = 1.8;
-  const targetGeo = new THREE.IcosahedronGeometry(0.55, 0);
+  const RESPAWN_DELAY = 1.5;
+  const targetGeo = new THREE.IcosahedronGeometry(0.5, 0);
   const targets = [];
+  const trainSpots = [[-4, 13], [0, 13.6], [4, 13]];
+  add(boxMesh(12, 0.6, 0.4, trimMat, 0, 0.3, 11.5), true); // range barrier
+  const rangeLabel = makeLabel("训练靶场", "#8effb0");
+  rangeLabel.position.set(0, 3.2, 14.5);
+  scene.add(rangeLabel);
 
-  for (let i = 0; i < TARGET_COUNT; i += 1) {
-    const mat = new THREE.MeshStandardMaterial({
-      color: 0xff6b4a,
-      emissive: 0xff3b1a,
-      emissiveIntensity: 0.6,
-      roughness: 0.4,
-      metalness: 0.1,
-    });
+  for (let i = 0; i < trainSpots.length; i += 1) {
+    const [tx, tz] = trainSpots[i];
+    const mat = new THREE.MeshStandardMaterial({ color: 0xff6b4a, emissive: 0xff3b1a, emissiveIntensity: 0.6, roughness: 0.4 });
     const mesh = new THREE.Mesh(targetGeo, mat);
     mesh.castShadow = true;
-    mesh.userData = {
-      type: "target",
-      health: TARGET_HP,
-      maxHealth: TARGET_HP,
-      alive: true,
-      baseY: 1.5,
-      phase: Math.random() * Math.PI * 2,
-      hitFlash: 0,
-      respawnAt: 0,
-    };
+    mesh.position.set(tx, 1.6, tz);
+    mesh.userData = { type: "target", health: TARGET_HP, maxHealth: TARGET_HP, alive: true, baseY: 1.6, home: new THREE.Vector3(tx, 1.6, tz), phase: i * 1.7, hitFlash: 0, respawnAt: 0 };
     scene.add(mesh);
     targets.push(mesh);
-    placeTarget(mesh);
-  }
-
-  // Move a target to a fresh random spot, away from cover boxes.
-  function placeTarget(mesh) {
-    const limit = ROOM - 2.5;
-    let x = 0;
-    let z = 0;
-    for (let tries = 0; tries < 20; tries += 1) {
-      x = (Math.random() * 2 - 1) * limit;
-      z = (Math.random() * 2 - 1) * limit;
-      // keep clear of cover boxes so targets don't spawn inside walls
-      const blocked = covers.some(([cx, cz, cw, , cd]) =>
-        Math.abs(x - cx) < cw / 2 + 1 && Math.abs(z - cz) < cd / 2 + 1
-      );
-      if (!blocked) break;
-    }
-    mesh.userData.baseY = 1.2 + Math.random() * 1.8;
-    mesh.position.set(x, mesh.userData.baseY, z);
   }
 
   const state = { score: 0, time: 0 };
 
-  // Apply damage to a target. Returns true when it was destroyed.
   function damageTarget(mesh, dmg) {
     const d = mesh.userData;
     if (!d.alive) return false;
@@ -154,7 +219,6 @@ export function createWorld(scene) {
     return false;
   }
 
-  // Meshes the weapon can ray-test against this frame.
   function getHittables() {
     const list = solids.slice();
     for (const tgt of targets) if (tgt.userData.alive) list.push(tgt);
@@ -166,25 +230,22 @@ export function createWorld(scene) {
     for (const mesh of targets) {
       const d = mesh.userData;
       if (d.alive) {
-        // bob + spin so they read as "alive"
-        mesh.position.y = d.baseY + Math.sin(state.time * 2 + d.phase) * 0.3;
+        mesh.position.y = d.baseY + Math.sin(state.time * 2 + d.phase) * 0.25;
         mesh.rotation.y += dt * 1.2;
-        mesh.rotation.x += dt * 0.6;
         if (d.hitFlash > 0) {
           d.hitFlash = Math.max(0, d.hitFlash - dt * 4);
           mesh.material.emissiveIntensity = 0.6 + d.hitFlash * 1.6;
         }
       } else if (state.time >= d.respawnAt) {
-        // respawn
         d.alive = true;
         d.health = d.maxHealth;
         d.hitFlash = 0;
         mesh.material.emissiveIntensity = 0.6;
+        mesh.position.copy(d.home);
         mesh.visible = true;
-        placeTarget(mesh);
       }
     }
   }
 
-  return { ROOM, colliders, solids, targets, state, damageTarget, getHittables, update };
+  return { ROOM, colliders, solids, targets, interactables, state, damageTarget, getHittables, update };
 }

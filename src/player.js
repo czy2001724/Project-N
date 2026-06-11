@@ -9,7 +9,7 @@ export function createPlayer(camera, world) {
 
   const state = {
     pos: new THREE.Vector3(0, 0, 9),
-    yaw: Math.PI,
+    yaw: 0, // face -Z, toward the deploy door
     pitch: 0,
     vy: 0,
     grounded: true,

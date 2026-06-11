@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { createWorld } from "./world.js";
 import { createPlayer } from "./player.js";
 import { createWeapons } from "./weapons.js";
+import { createUI } from "./ui.js";
 
 // --- Renderer / scene / camera ------------------------------------------
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -28,6 +29,7 @@ const ammoEl = document.getElementById("ammo");
 const healthEl = document.getElementById("health");
 const weaponEl = document.getElementById("weapon");
 const sprintEl = document.getElementById("sprint");
+const promptEl = document.getElementById("prompt");
 
 const weapons = createWeapons(camera, scene, world, player, {
   onHitmarker() {
@@ -38,15 +40,56 @@ const weapons = createWeapons(camera, scene, world, player, {
   },
 });
 
+const ui = createUI({
+  onResume: () => requestLock(),
+  onDeploy: () => {}, // hook for the future combat instance
+});
+
 // --- Input --------------------------------------------------------------
 const inputState = { locked: false };
+let activeInteractable = null;
+
+function interact() {
+  if (!activeInteractable) return;
+  ui.openAction(activeInteractable.action);
+  document.exitPointerLock?.();
+}
+
+function updateInteraction() {
+  let best = null;
+  let bestD = Infinity;
+  const p = player.state.pos;
+  for (const it of world.interactables) {
+    const d = Math.hypot(p.x - it.pos.x, p.z - it.pos.z);
+    if (d < it.radius && d < bestD) {
+      best = it;
+      bestD = d;
+    }
+  }
+  activeInteractable = best;
+  if (best) {
+    promptEl.textContent = `[E] ${best.name}`;
+    promptEl.style.display = "block";
+  } else {
+    promptEl.style.display = "none";
+  }
+}
 
 function onKeyDown(e) {
+  // While a menu is open, only Esc (close) is handled.
+  if (ui.isOpen()) {
+    if (e.code === "Escape") {
+      ui.close();
+      requestLock();
+    }
+    return;
+  }
   if (["KeyW", "KeyA", "KeyS", "KeyD", "Space", "ShiftLeft", "ControlLeft"].includes(e.code)) {
     e.preventDefault();
   }
   player.keys.add(e.code);
   if (e.code === "Space" && !e.repeat) player.queueJump();
+  if (e.code === "KeyE") interact();
   if (e.code === "KeyR") weapons.reload();
   if (e.code === "Digit1") weapons.select(0);
   if (e.code === "Digit2") weapons.select(1);
@@ -77,11 +120,13 @@ function requestLock() {
 
 function onPointerLockChange() {
   inputState.locked = document.pointerLockElement === renderer.domElement;
-  overlay.classList.toggle("hidden", inputState.locked);
+  // Show the start overlay only when paused with no menu panel open.
+  overlay.classList.toggle("hidden", inputState.locked || ui.isOpen());
   crosshair.style.display = inputState.locked ? "block" : "none";
   if (!inputState.locked) {
     weapons.triggerUp();
     player.keys.clear();
+    promptEl.style.display = "none";
   }
 }
 
@@ -128,6 +173,7 @@ function animate(now) {
     player.update(dt);
     weapons.update(dt, now / 1000);
     world.update(dt);
+    updateInteraction();
   }
 
   renderer.render(scene, camera);
