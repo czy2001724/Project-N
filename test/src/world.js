@@ -343,32 +343,111 @@ export function createWorld(scene, hooks = {}) {
   }
 
   // =====================================================================
-  // AREA 1 — white training facility (built far away; player teleports in).
+  // AREA 1 — procedural FOREST (built far away; player teleports in).
   const AX = 260; // x offset of the area region from the base
-  const areaSpawn = new THREE.Vector3(AX, 0, 8.5);
+  const FH = 30; // forest half-extent
+  const areaSpawn = new THREE.Vector3(AX, 0, 0);
   const baseSpawn = new THREE.Vector3(0, 0, 9);
+  const areaHalfX = FH;
+  const areaHalfZ = FH;
   const enemies = [];
   const loot = [];
 
-  (function buildArea1() {
-    const W = 22, D = 26, H = 6;
-    const white = new THREE.MeshStandardMaterial({ color: 0xe9eef4, roughness: 0.85, metalness: 0.05 });
-    const white2 = new THREE.MeshStandardMaterial({ color: 0xccd6e0, roughness: 0.9, metalness: 0.05 });
-    const f = boxMesh(W, 0.2, D, white, AX, -0.1, 0); f.receiveShadow = true; scene.add(f); solids.push(f);
-    scene.add(boxMesh(W, 0.2, D, white2, AX, H, 0));
-    add(boxMesh(W, H, 0.4, white, AX, H / 2, -D / 2), true);
-    add(boxMesh(W, H, 0.4, white, AX, H / 2, D / 2), true);
-    add(boxMesh(0.4, H, D, white, AX - W / 2, H / 2, 0), true);
-    add(boxMesh(0.4, H, D, white, AX + W / 2, H / 2, 0), true);
-    for (let gz = -D / 2 + 3; gz <= D / 2 - 3; gz += 5) scene.add(boxMesh(W - 2, 0.06, 0.5, cyan, AX, H - 0.2, gz));
-    for (const [bx, bz] of [[-5, -3], [5, 2], [-4, 6], [6, -6]]) add(boxMesh(2, 1.2, 2, white2, AX + bx, 0.6, bz), true);
+  // store the base atmosphere so we can swap to a forest sky on deploy
+  const baseFog = scene.fog;
+  const baseBg = scene.background;
+  const forestFog = new THREE.Fog(0xbcd8cf, 14, 62);
+  const forestBg = new THREE.Color(0xa6d3e0);
+  // all forest geometry lives in this group so it can be hidden (not rendered)
+  // while the player is back in the base.
+  const areaGroup = new THREE.Group();
+  areaGroup.visible = false;
+  scene.add(areaGroup);
+
+  function grassTexture() {
+    const c = document.createElement("canvas"); c.width = 128; c.height = 128;
+    const x = c.getContext("2d");
+    x.fillStyle = "#557f3a"; x.fillRect(0, 0, 128, 128);
+    for (let i = 0; i < 2400; i += 1) {
+      const g = 90 + Math.random() * 70;
+      x.fillStyle = `rgba(${50 + Math.random() * 40 | 0},${g | 0},${45 + Math.random() * 35 | 0},0.5)`;
+      x.fillRect(Math.random() * 128, Math.random() * 128, 2, 3);
+    }
+    const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(30, 30);
+    return t;
+  }
+  function makeTree(kind) {
+    const g = new THREE.Group();
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.27, 2.2, 7), new THREE.MeshStandardMaterial({ color: 0x6b4a2f, roughness: 0.95 }));
+    trunk.position.y = 1.1; trunk.castShadow = true; g.add(trunk);
+    if (kind === 0) { // conifer
+      const greens = [0x2f6b3a, 0x357a42, 0x274d2f];
+      for (let i = 0; i < 3; i += 1) {
+        const cone = new THREE.Mesh(new THREE.ConeGeometry(1.5 - i * 0.42, 1.7, 8), new THREE.MeshStandardMaterial({ color: greens[i], roughness: 0.85 }));
+        cone.position.y = 2.2 + i * 1.0; cone.castShadow = true; g.add(cone);
+      }
+    } else { // broadleaf
+      const fol = new THREE.MeshStandardMaterial({ color: 0x4f9a4a, roughness: 0.85 });
+      for (const [dx, dy, dz, r] of [[0, 2.7, 0, 1.3], [0.7, 2.4, 0.2, 0.9], [-0.6, 2.5, -0.3, 0.95]]) {
+        const s = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), fol);
+        s.position.set(dx, dy, dz); s.castShadow = true; g.add(s);
+      }
+    }
+    return g;
+  }
+  (function buildForest() {
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(FH * 2 + 24, FH * 2 + 24), new THREE.MeshStandardMaterial({ map: grassTexture(), roughness: 1, metalness: 0 }));
+    ground.rotation.x = -Math.PI / 2; ground.position.set(AX, 0, 0); ground.receiveShadow = true;
+    areaGroup.add(ground); solids.push(ground);
+    const dirt = new THREE.MeshStandardMaterial({ color: 0x6a5238, roughness: 1 });
+    for (let i = 0; i < 10; i += 1) {
+      const p = new THREE.Mesh(new THREE.CircleGeometry(2 + Math.random() * 4, 16), dirt);
+      p.rotation.x = -Math.PI / 2; p.position.set(AX + (Math.random() - 0.5) * FH * 1.5, 0.01, (Math.random() - 0.5) * FH * 1.5);
+      areaGroup.add(p);
+    }
+    // scattered trees (clearings near spawn 0,0 and extract 0,8)
+    let placed = 0, tries = 0;
+    while (placed < 100 && tries < 700) {
+      tries += 1;
+      const ex = (Math.random() - 0.5) * 2 * (FH - 2);
+      const ez = (Math.random() - 0.5) * 2 * (FH - 2);
+      if (Math.hypot(ex, ez) < 7) continue;
+      if (Math.hypot(ex, ez - 8) < 4) continue;
+      const s = 0.85 + Math.random() * 0.9;
+      const t = makeTree(Math.random() < 0.6 ? 0 : 1);
+      t.scale.setScalar(s); t.position.set(AX + ex, 0, ez); t.rotation.y = Math.random() * 6.28;
+      areaGroup.add(t);
+      colliders.push(new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(AX + ex, 1, ez), new THREE.Vector3(0.55 * s, 2.2, 0.55 * s)));
+      placed += 1;
+    }
+    // dense boundary ring (natural wall)
+    for (let a = 0; a < Math.PI * 2; a += 0.14) {
+      const r = FH - 0.5 + Math.random() * 2;
+      const t = makeTree(0); const s = 1 + Math.random() * 0.6;
+      t.scale.setScalar(s); t.position.set(AX + Math.cos(a) * r, 0, Math.sin(a) * r); t.rotation.y = Math.random() * 6.28;
+      areaGroup.add(t);
+    }
+    // rocks + bushes
+    const rockMat = new THREE.MeshStandardMaterial({ color: 0x8a8f96, roughness: 0.95 });
+    const bushMat = new THREE.MeshStandardMaterial({ color: 0x3f7a3a, roughness: 0.9 });
+    for (let i = 0; i < 22; i += 1) {
+      const r = 0.4 + Math.random() * 0.9;
+      const rock = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), rockMat);
+      rock.position.set(AX + (Math.random() - 0.5) * FH * 1.6, r * 0.5, (Math.random() - 0.5) * FH * 1.6);
+      rock.rotation.set(Math.random(), Math.random(), Math.random()); rock.castShadow = true; areaGroup.add(rock);
+    }
+    for (let i = 0; i < 46; i += 1) {
+      const r = 0.4 + Math.random() * 0.5;
+      const b = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), bushMat);
+      b.position.set(AX + (Math.random() - 0.5) * FH * 1.6, r * 0.7, (Math.random() - 0.5) * FH * 1.6);
+      b.castShadow = true; areaGroup.add(b);
+    }
     // extract pad (return to base)
-    scene.add(place(new THREE.Mesh(new THREE.RingGeometry(1.1, 1.4, 40), mint), AX, 0.05, 9).rotateX(-Math.PI / 2));
-    scene.add(col(1.5, 0.1, mint, AX, 0.06, 9, 24));
-    const exLabel = makeLabel("撤离点 [E]", "#8effb0"); exLabel.position.set(AX, 2.2, 9); scene.add(exLabel);
-    const areaLabel = makeLabel("AREA 1 · 白色设施", "#cfe2f2"); areaLabel.position.set(AX, 4.6, -D / 2 + 1); scene.add(areaLabel);
+    areaGroup.add(place(new THREE.Mesh(new THREE.RingGeometry(1.2, 1.6, 40), mint), AX, 0.05, 8).rotateX(-Math.PI / 2));
+    areaGroup.add(col(1.7, 0.1, mint, AX, 0.06, 8, 28));
+    const exLabel = makeLabel("撤离点 [E]", "#8effb0"); exLabel.position.set(AX, 2.4, 8); areaGroup.add(exLabel);
   })();
-  interactables.push({ name: "撤离点", action: "extract", pos: new THREE.Vector3(AX, 0, 9), radius: 2.4 });
+  interactables.push({ name: "撤离点", action: "extract", pos: new THREE.Vector3(AX, 0, 8), radius: 2.6 });
 
   function buildSoldier(suitColor) {
     const g = new THREE.Group();
@@ -403,8 +482,14 @@ export function createWorld(scene, hooks = {}) {
   function spawnWave(n) {
     for (const e of enemies) scene.remove(e.group);
     enemies.length = 0;
-    const spots = [[-6, -4], [6, -3], [-3, 3], [4, 5], [0, -7], [7, 1], [-7, 2], [2, -2]];
-    for (let i = 0; i < Math.min(n, spots.length); i += 1) makeEnemy(spots[i][0], spots[i][1]);
+    let placed = 0, tries = 0;
+    while (placed < n && tries < n * 10) {
+      tries += 1;
+      const a = Math.random() * Math.PI * 2;
+      const r = 9 + Math.random() * 15;
+      makeEnemy(Math.cos(a) * r, Math.sin(a) * r);
+      placed += 1;
+    }
   }
   function spawnLoot(pos) {
     const drop = rollLoot();
@@ -428,8 +513,14 @@ export function createWorld(scene, hooks = {}) {
     }
     return false;
   }
-  function enterArea1() { clearLoot(); spawnWave(8); state.inArea = true; }
+  function enterArea1() {
+    scene.fog = forestFog; scene.background = forestBg;
+    areaGroup.visible = true;
+    clearLoot(); spawnWave(10); state.inArea = true;
+  }
   function extract() {
+    scene.fog = baseFog; scene.background = baseBg;
+    areaGroup.visible = false;
     state.inArea = false;
     for (const e of enemies) scene.remove(e.group);
     enemies.length = 0;
@@ -510,6 +601,6 @@ export function createWorld(scene, hooks = {}) {
   return {
     ROOM, colliders, solids, targets, interactables, state,
     damageTarget, damageEnemy, getHittables, update,
-    enterArea1, extract, enemiesLeft, areaSpawn, baseSpawn,
+    enterArea1, extract, enemiesLeft, areaSpawn, baseSpawn, areaHalfX, areaHalfZ,
   };
 }

@@ -16,7 +16,7 @@ import { renderInventory, ITEM_DB } from "./inventory.js?v=DEV";
 // Human-readable build version: YYMMDD + 3-digit deploy count for that day
 // (e.g. 260611001 = 2026-06-11, 1st deploy). Bumped by hand each deploy so a
 // refresh visibly confirms whether the new build is live.
-const BUILD_VERSION = "260611017";
+const BUILD_VERSION = "260611018";
 (() => {
   const el = document.getElementById("buildVer");
   if (el) el.textContent = `v${BUILD_VERSION}`;
@@ -76,11 +76,12 @@ function openChar() {
   charPanel.classList.remove("hidden");
   if (document.pointerLockElement) document.exitPointerLock?.();
 }
-function closeChar() {
+function closeChar(resume = true) {
   charPanel.classList.add("hidden");
-  requestLock();
+  if (resume) requestLock();
+  else showPause();
 }
-document.getElementById("charClose").addEventListener("click", closeChar);
+document.getElementById("charClose").addEventListener("click", () => closeChar(true));
 
 const weapons = createWeapons(camera, scene, world, player, {
   onHitmarker() {
@@ -146,16 +147,17 @@ function updateInteraction() {
 }
 
 function onKeyDown(e) {
-  // Backpack/attributes panel: B or Esc closes it.
+  // Backpack/attributes panel: B resumes the game, Esc goes to the pause overlay.
   if (!charPanel.classList.contains("hidden")) {
-    if (e.code === "KeyB" || e.code === "Escape") closeChar();
+    if (e.code === "KeyB") closeChar(true);
+    else if (e.code === "Escape") closeChar(false);
     return;
   }
-  // While a menu is open, only Esc (close) is handled.
+  // While a menu is open, Esc closes it to the pause overlay.
   if (ui.isOpen()) {
     if (e.code === "Escape") {
       ui.close();
-      requestLock();
+      showPause();
     }
     return;
   }
@@ -192,6 +194,15 @@ function onMouseUp(e) {
 
 function requestLock() {
   renderer.domElement.requestPointerLock?.();
+}
+
+// Browsers block requestPointerLock when it's triggered by the Esc key (Esc is
+// the exit key), so closing a panel with Esc shows the pause overlay instead of
+// snapping back into the game — the player clicks "点击开始" to resume.
+function showPause() {
+  overlay.classList.remove("hidden");
+  crosshair.style.display = "none";
+  player.keys.clear();
 }
 
 function onPointerLockChange() {

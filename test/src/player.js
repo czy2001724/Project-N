@@ -59,8 +59,10 @@ export function createPlayer(camera, world) {
     // clamp to the current region's bounds (base, or the far Area 1 room)
     if (world.state && world.state.inArea && world.areaSpawn) {
       const cx = world.areaSpawn.x;
-      state.pos.x = clamp(state.pos.x, cx - (11 - 0.5 - r), cx + (11 - 0.5 - r));
-      state.pos.z = clamp(state.pos.z, -(13 - 0.5 - r), 13 - 0.5 - r);
+      const hx = (world.areaHalfX || 11) - 0.5 - r;
+      const hz = (world.areaHalfZ || 13) - 0.5 - r;
+      state.pos.x = clamp(state.pos.x, cx - hx, cx + hx);
+      state.pos.z = clamp(state.pos.z, -hz, hz);
     } else {
       const limit = world.ROOM - 0.5 - r;
       state.pos.x = clamp(state.pos.x, -limit, limit);
