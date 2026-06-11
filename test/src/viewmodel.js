@@ -54,6 +54,7 @@ export function createViewmodel(camera) {
     (holder, muzzle) => {
       const flash = makeFlash(muzzle);
       const akGroup = new THREE.Group();
+      akGroup.scale.x = -1; // mirror to a right-handed hold (gun on the right)
       akGroup.add(holder);
       akGroup.add(flash);
       poseGroup.remove(built.rifle.group);
