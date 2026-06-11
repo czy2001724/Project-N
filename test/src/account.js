@@ -1,0 +1,75 @@
+// Local account system. Accounts + per-account data (inventory, equipment,
+// stats, coins) are stored in localStorage. No real security — passwords are
+// only lightly hashed since everything lives on the player's machine.
+
+const ACC_KEY = "pn_accounts_v1";
+const SESS_KEY = "pn_session_v1";
+
+function readAll() {
+  try { return JSON.parse(localStorage.getItem(ACC_KEY)) || {}; } catch { return {}; }
+}
+function writeAll(a) { localStorage.setItem(ACC_KEY, JSON.stringify(a)); }
+
+// tiny non-crypto hash (djb2) — local-only obfuscation, not security
+function hash(s) {
+  let h = 5381;
+  for (let i = 0; i < s.length; i += 1) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+  return h.toString(16);
+}
+
+// Starter loadout so the backpack isn't empty while there's no game content yet.
+function defaultData() {
+  return {
+    coins: 500,
+    equipment: { primary: "ak47_gold", secondary: "pistol_std", melee: "combat_knife", armor: null, gear: null },
+    inventory: [
+      { id: "ak47_gold", qty: 1 },
+      { id: "pistol_std", qty: 1 },
+      { id: "combat_knife", qty: 1 },
+      { id: "nano_armor", qty: 1 },
+      { id: "tac_gloves", qty: 1 },
+      { id: "med_stim", qty: 3 },
+      { id: "scrap", qty: 12 },
+      { id: "data_chip", qty: 2 },
+    ],
+    stats: { kills: 0, deaths: 0, runs: 0 },
+  };
+}
+
+export const account = {
+  register(user, pass) {
+    user = (user || "").trim();
+    if (user.length < 2) return { ok: false, msg: "用户名至少 2 个字符" };
+    if ((pass || "").length < 3) return { ok: false, msg: "密码至少 3 位" };
+    const all = readAll();
+    if (all[user]) return { ok: false, msg: "该用户名已存在" };
+    all[user] = { passHash: hash(pass), created: Date.now(), data: defaultData() };
+    writeAll(all);
+    localStorage.setItem(SESS_KEY, user);
+    return { ok: true };
+  },
+  login(user, pass) {
+    user = (user || "").trim();
+    const all = readAll();
+    const a = all[user];
+    if (!a) return { ok: false, msg: "用户不存在" };
+    if (a.passHash !== hash(pass)) return { ok: false, msg: "密码错误" };
+    localStorage.setItem(SESS_KEY, user);
+    return { ok: true };
+  },
+  logout() { localStorage.removeItem(SESS_KEY); },
+  current() { return localStorage.getItem(SESS_KEY); },
+  list() { return Object.keys(readAll()); },
+  getData() {
+    const u = this.current();
+    if (!u) return null;
+    const all = readAll();
+    return (all[u] && all[u].data) || null;
+  },
+  save(data) {
+    const u = this.current();
+    if (!u) return;
+    const all = readAll();
+    if (all[u]) { all[u].data = data; writeAll(all); }
+  },
+};

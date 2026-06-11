@@ -17,6 +17,7 @@
     </script>
   </head>
   <body>
+    <!-- ===== In-game HUD ===== -->
     <div id="hud">
       <div class="title">Project N — M1 雏形 <span id="buildVer" class="ver">…</span></div>
       <div class="hint">WASD 移动 · 鼠标瞄准 · 左键攻击 · E 交互 · 1/2/3 切换武器 · R 换弹 · 按住 Shift 冲刺 · Ctrl 蹲 · Space 跳</div>
@@ -37,10 +38,75 @@
 
     <div id="overlay">
       <div class="panel">
-        <h1>Project N</h1>
+        <h1>训练场</h1>
         <p>科幻射击雏形 · M1</p>
         <button id="startBtn">点击开始</button>
-        <p class="sub">点击后锁定鼠标，按 Esc 释放</p>
+        <button id="backToLobby" class="ghost">返回大厅</button>
+        <p class="sub">点击开始后锁定鼠标，按 Esc 释放</p>
+      </div>
+    </div>
+
+    <!-- ===== Boot logo ===== -->
+    <div id="bootLogo">
+      <svg class="logoSvg" viewBox="0 0 320 200" aria-hidden="true">
+        <polygon class="lg-hex" points="160,16 233,58 233,142 160,184 87,142 87,58" />
+        <polygon class="lg-hex2" points="160,34 218,67 218,133 160,166 102,133 102,67" />
+        <path class="lg-n" d="M126 146 L126 64 L194 146 L194 64" />
+      </svg>
+      <div class="logoText">PROJECT&nbsp;<span>N</span></div>
+      <div class="logoTag">SCI-FI&nbsp;·&nbsp;LOOTER&nbsp;SHOOTER</div>
+    </div>
+
+    <!-- ===== Auth ===== -->
+    <div id="authScreen" class="hidden">
+      <div class="auth-card">
+        <div class="auth-logo">PROJECT&nbsp;<span>N</span></div>
+        <div class="auth-sub">登录 / 注册（本地账号）</div>
+        <input id="authUser" class="auth-input" type="text" placeholder="用户名" autocomplete="off" maxlength="16" />
+        <input id="authPass" class="auth-input" type="password" placeholder="密码" maxlength="32" />
+        <div id="authMsg" class="auth-msg"></div>
+        <div class="auth-btns">
+          <button id="authLoginBtn" class="btn-primary">登录</button>
+          <button id="authRegBtn" class="btn-ghost">注册新账号</button>
+        </div>
+        <div class="auth-note">账号与装备数据保存在本机。无服务器、无需联网。</div>
+      </div>
+    </div>
+
+    <!-- ===== Home lobby ===== -->
+    <div id="homeScreen" class="hidden">
+      <div class="home-top">
+        <div class="home-logo">PROJECT&nbsp;<span>N</span></div>
+        <div class="home-user">
+          <span class="hu-name">指挥官 <b id="homeUser">—</b></span>
+          <span class="hu-coins">◈ <b id="homeCoins">0</b></span>
+          <button id="btnLogout" class="btn-tiny">登出</button>
+        </div>
+      </div>
+      <div class="home-menu">
+        <button id="btnDeploy" class="home-card deploy">
+          <div class="hc-title">进入训练场</div>
+          <div class="hc-sub">DEPLOY · 自由练习</div>
+        </button>
+        <button id="btnBackpack" class="home-card pack">
+          <div class="hc-title">个人背包</div>
+          <div class="hc-sub">INVENTORY · 装备与道具</div>
+        </button>
+        <button class="home-card soon" disabled>
+          <div class="hc-title">作战区域</div>
+          <div class="hc-sub">COMING SOON · 掉落装备</div>
+        </button>
+      </div>
+    </div>
+
+    <!-- ===== Backpack ===== -->
+    <div id="inventoryScreen" class="hidden">
+      <div class="inv-panel">
+        <div class="inv-head">
+          <h2>个人背包</h2>
+          <button id="btnInvClose" class="btn-tiny">关闭 ✕</button>
+        </div>
+        <div id="invBody"></div>
       </div>
     </div>
 

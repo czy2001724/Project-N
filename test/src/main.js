@@ -9,11 +9,12 @@ import { createPlayer } from "./player.js?v=DEV";
 import { createWeapons } from "./weapons.js?v=DEV";
 import { createUI } from "./ui.js?v=DEV";
 import { toonify } from "./toonify.js?v=DEV";
+import "./shell.js?v=DEV"; // boot logo + login + lobby + backpack (front-end shell)
 
 // Human-readable build version: YYMMDD + 3-digit deploy count for that day
 // (e.g. 260611001 = 2026-06-11, 1st deploy). Bumped by hand each deploy so a
 // refresh visibly confirms whether the new build is live.
-const BUILD_VERSION = "260611015";
+const BUILD_VERSION = "260611016";
 (() => {
   const el = document.getElementById("buildVer");
   if (el) el.textContent = `v${BUILD_VERSION}`;
