@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { buildRifle, buildPistol, buildKnife } from "./models.js";
+import { buildRifle, buildPistol, buildKnife } from "./models.js?v=DEV";
 
 // Weapon definitions. mode drives trigger behaviour:
 //   auto  -> fires continuously while the trigger is held

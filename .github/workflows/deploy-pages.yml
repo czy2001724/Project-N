@@ -33,6 +33,14 @@ jobs:
           # Auto-create the Pages site if it isn't enabled yet
           enablement: true
 
+      - name: Cache-bust module versions
+        # Replace the ?v=DEV placeholder on local imports with the commit SHA
+        # so browsers always fetch fresh modules after a deploy.
+        run: |
+          VER="${GITHUB_SHA::8}"
+          find . -path ./.git -prune -o \( -name '*.js' -o -name '*.html' \) -print \
+            | xargs sed -i "s/?v=DEV/?v=${VER}/g"
+
       - name: Upload site artifact
         uses: actions/upload-pages-artifact@v3
         with:

@@ -1,8 +1,8 @@
 import * as THREE from "three";
-import { createWorld } from "./world.js";
-import { createPlayer } from "./player.js";
-import { createWeapons } from "./weapons.js";
-import { createUI } from "./ui.js";
+import { createWorld } from "./world.js?v=DEV";
+import { createPlayer } from "./player.js?v=DEV";
+import { createWeapons } from "./weapons.js?v=DEV";
+import { createUI } from "./ui.js?v=DEV";
 
 // --- Renderer / scene / camera ------------------------------------------
 const renderer = new THREE.WebGLRenderer({ antialias: true });

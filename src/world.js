@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { techPanel, techFloor, hazardStripes, brushedMetal, holoScreen } from "./textures.js";
+import { techPanel, techFloor, hazardStripes, brushedMetal, holoScreen } from "./textures.js?v=DEV";
 
 // Enclosed sci-fi base. Mixes boxes with cylinders, capsules, arches and
 // rings to break up the blocky look, with a bright, saturated palette.
