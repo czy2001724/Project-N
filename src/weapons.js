@@ -59,6 +59,12 @@ export function createWeapons(camera, scene, world, player, hooks = {}) {
   let current = weapons[0];
   current.group.visible = true;
 
+  // Weapon-switch animation: lower the old weapon, swap, raise the new one.
+  const SWITCH_TIME = 0.16; // seconds per half (lower / raise)
+  let equipT = 0; // 0 = fully up/ready, 1 = fully lowered
+  let equipPhase = "idle"; // "lower" | "raise" | "idle"
+  let pendingIndex = -1;
+
   function damageAt(range, damage) {
     ray.setFromCamera(screenCenter, camera);
     ray.far = range;
@@ -75,9 +81,10 @@ export function createWeapons(camera, scene, world, player, hooks = {}) {
 
   function reload() {
     const w = current;
-    if (w.def.mode === "melee" || w.reloading) return;
+    if (w.def.mode === "melee" || w.reloading || equipPhase !== "idle") return;
     if (w.ammo === w.def.mag || w.reserve === 0) return;
     w.reloading = true;
+    w.reloadStart = performance.now() / 1000; // drives the dip animation
     setTimeout(() => {
       const need = w.def.mag - w.ammo;
       const take = Math.min(need, w.reserve);
@@ -112,6 +119,7 @@ export function createWeapons(camera, scene, world, player, hooks = {}) {
 
   // Trigger pressed.
   function triggerDown(time) {
+    if (equipPhase !== "idle") return; // can't fire mid weapon-swap
     if (current.def.mode === "auto") {
       current.firing = true;
       fireRanged(time); // immediate first shot
@@ -126,35 +134,84 @@ export function createWeapons(camera, scene, world, player, hooks = {}) {
     current.firing = false;
   }
 
+  // Start a switch: the actual swap happens mid-animation (see update()).
   function select(index) {
-    if (index < 0 || index >= weapons.length || weapons[index] === current) return;
+    if (index < 0 || index >= weapons.length) return;
+    const target = weapons[index];
+    if (equipPhase === "idle" && target === current) return;
+    if (equipPhase === "lower" && weapons[pendingIndex] === target) return;
+    pendingIndex = index;
+    equipPhase = "lower";
     current.firing = false;
-    current.group.visible = false;
-    current = weapons[index];
-    current.group.visible = true;
   }
 
   function update(dt, time) {
-    // auto fire while held
-    if (current.def.mode === "auto" && current.firing) fireRanged(time);
+    // --- weapon switch: lower old -> swap -> raise new ---
+    if (equipPhase === "lower") {
+      equipT = Math.min(1, equipT + dt / SWITCH_TIME);
+      if (equipT >= 1) {
+        current.group.visible = false;
+        current = weapons[pendingIndex];
+        current.group.visible = true;
+        equipPhase = "raise";
+      }
+    } else if (equipPhase === "raise") {
+      equipT = Math.max(0, equipT - dt / SWITCH_TIME);
+      if (equipT <= 0) equipPhase = "idle";
+    }
 
-    // per-weapon view-model animation
-    for (const w of weapons) {
-      if (w.def.mode === "melee") {
-        w.swing = Math.max(0, w.swing - dt * 3.2);
-        const s = Math.sin(w.swing * Math.PI); // 0..1..0
-        w.group.position.set(w.restPos.x - s * 0.12, w.restPos.y + s * 0.06, w.restPos.z + s * 0.05);
-        w.group.rotation.x = -s * 1.1;
-        w.group.rotation.z = s * 0.5;
-      } else {
-        w.recoil = Math.max(0, w.recoil - dt * 0.9);
-        w.group.position.set(w.restPos.x, w.restPos.y, w.restPos.z + w.recoil);
-        w.group.rotation.x = w.recoil * 1.5;
-        if (w.flash && w.flash.intensity > 0) {
-          w.flash.intensity = Math.max(0, w.flash.intensity - dt * 40);
-        }
+    // auto fire while held (never mid-switch)
+    if (current.def.mode === "auto" && current.firing && equipPhase === "idle") {
+      fireRanged(time);
+    }
+
+    const w = current;
+
+    // recoil / swing / muzzle-flash decay
+    if (w.def.mode === "melee") {
+      w.swing = Math.max(0, w.swing - dt * 3.2);
+    } else {
+      w.recoil = Math.max(0, w.recoil - dt * 0.9);
+      if (w.flash && w.flash.intensity > 0) {
+        w.flash.intensity = Math.max(0, w.flash.intensity - dt * 40);
       }
     }
+
+    // reload dip (0 -> 1 -> 0 across the reload)
+    let reloadDip = 0;
+    if (w.reloading) {
+      const p = Math.min(1, (time - w.reloadStart) / w.def.reload);
+      reloadDip = Math.sin(p * Math.PI);
+    }
+
+    // compose the view-model transform from all active motions
+    let px = w.restPos.x;
+    let py = w.restPos.y;
+    let pz = w.restPos.z;
+    let rx = 0;
+    let rz = 0;
+
+    py -= equipT * 0.4; // lowered during switch
+    rx += equipT * 1.0;
+
+    py -= reloadDip * 0.18; // dip while reloading
+    rx += reloadDip * 0.8;
+    rz += reloadDip * 0.35;
+
+    if (w.def.mode === "melee") {
+      const s = Math.sin(w.swing * Math.PI);
+      px -= s * 0.12;
+      py += s * 0.06;
+      pz += s * 0.05;
+      rx += -s * 1.1;
+      rz += s * 0.5;
+    } else {
+      pz += w.recoil;
+      rx += w.recoil * 1.5;
+    }
+
+    w.group.position.set(px, py, pz);
+    w.group.rotation.set(rx, 0, rz);
 
     // fade impact sparks
     for (let i = impacts.length - 1; i >= 0; i -= 1) {
