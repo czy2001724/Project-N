@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { techPanel, techFloor, hazardStripes, brushedMetal, holoScreen } from "./textures.js?v=DEV";
+import { techPanel, techFloor, hazardStripes, brushedMetal, holoScreen, panelNormal, floorNormal } from "./textures.js?v=DEV";
 
 // Enclosed sci-fi base. Mixes boxes with cylinders, capsules, arches and
 // rings to break up the blocky look, with a bright, saturated palette.
@@ -41,14 +41,22 @@ export function createWorld(scene) {
   const hazardTex = hazardStripes();
   hazardTex.repeat.set(3, 1);
 
-  const floorMat = new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.65, metalness: 0.35 });
-  const wallMat = new THREE.MeshStandardMaterial({ map: wallTex, roughness: 0.72, metalness: 0.3 });
-  const ceilMat = new THREE.MeshStandardMaterial({ map: ceilTex, roughness: 0.8, metalness: 0.3 });
-  const trimMat = new THREE.MeshStandardMaterial({ map: metalTex, roughness: 0.35, metalness: 0.6 });
-  const hazardMat = new THREE.MeshStandardMaterial({ map: hazardTex, roughness: 0.55, metalness: 0.2 });
-  const cyan = new THREE.MeshStandardMaterial({ color: 0x2bb6ff, emissive: 0x37c4ff, emissiveIntensity: 1.15, roughness: 0.35 });
-  const orange = new THREE.MeshStandardMaterial({ color: 0xff9a3c, emissive: 0xff8a2c, emissiveIntensity: 1.1, roughness: 0.35 });
-  const mint = new THREE.MeshStandardMaterial({ color: 0x46ffb0, emissive: 0x40f0a0, emissiveIntensity: 1.0, roughness: 0.35 });
+  // Normal maps so seams/tiles catch light (real surface relief).
+  const floorNorm = floorNormal();
+  floorNorm.repeat.set(12, 12);
+  const wallNorm = panelNormal();
+  wallNorm.repeat.set(8, 2);
+
+  const floorMat = new THREE.MeshStandardMaterial({ map: floorTex, normalMap: floorNorm, roughness: 0.5, metalness: 0.5 });
+  floorMat.normalScale = new THREE.Vector2(0.6, 0.6);
+  const wallMat = new THREE.MeshStandardMaterial({ map: wallTex, normalMap: wallNorm, roughness: 0.62, metalness: 0.4 });
+  wallMat.normalScale = new THREE.Vector2(0.9, 0.9);
+  const ceilMat = new THREE.MeshStandardMaterial({ map: ceilTex, roughness: 0.75, metalness: 0.4 });
+  const trimMat = new THREE.MeshStandardMaterial({ map: metalTex, roughness: 0.25, metalness: 0.9 });
+  const hazardMat = new THREE.MeshStandardMaterial({ map: hazardTex, roughness: 0.5, metalness: 0.3 });
+  const cyan = new THREE.MeshStandardMaterial({ color: 0x2bb6ff, emissive: 0x37c4ff, emissiveIntensity: 1.4, roughness: 0.35 });
+  const orange = new THREE.MeshStandardMaterial({ color: 0xff9a3c, emissive: 0xff8a2c, emissiveIntensity: 1.35, roughness: 0.35 });
+  const mint = new THREE.MeshStandardMaterial({ color: 0x46ffb0, emissive: 0x40f0a0, emissiveIntensity: 1.3, roughness: 0.35 });
 
   const colliders = [];
   const solids = [];

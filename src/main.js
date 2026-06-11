@@ -1,4 +1,10 @@
 import * as THREE from "three";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
+import { SMAAPass } from "three/addons/postprocessing/SMAAPass.js";
 import { createWorld } from "./world.js?v=DEV";
 import { createPlayer } from "./player.js?v=DEV";
 import { createWeapons } from "./weapons.js?v=DEV";
@@ -10,14 +16,30 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
 document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.08, 200);
 scene.add(camera); // camera holds the weapon view-model
 
+// Image-based lighting for realistic PBR reflections.
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
 const world = createWorld(scene);
 const player = createPlayer(camera, world);
+
+// --- Post-processing: cinematic, restrained ----------------------------
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+// subtle bloom — only genuinely bright emissive pixels glow
+composer.addPass(
+  new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.32, 0.6, 1.0)
+);
+composer.addPass(new OutputPass()); // tone mapping + color space
+composer.addPass(new SMAAPass(window.innerWidth, window.innerHeight)); // clean edges
 
 // HUD elements
 const overlay = document.getElementById("overlay");
@@ -151,6 +173,7 @@ window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  composer.setSize(window.innerWidth, window.innerHeight);
 });
 
 // --- HUD ----------------------------------------------------------------
@@ -176,7 +199,7 @@ function animate(now) {
     updateInteraction();
   }
 
-  renderer.render(scene, camera);
+  composer.render();
   updateHUD();
   requestAnimationFrame(animate);
 }

@@ -169,3 +169,76 @@ export function holoScreen(title = "OPERATIONS", lines = 5, color = "#5fd0ff") {
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
 }
+
+// --- Normal maps ------------------------------------------------------
+// Convert a grayscale height canvas into a tangent-space normal map so
+// surfaces catch light (panel seams become real grooves). Returns a
+// linear-space texture.
+function heightToNormal(heightCanvas, strength = 2.2, repeat = 1) {
+  const S = heightCanvas.width;
+  const src = heightCanvas.getContext("2d").getImageData(0, 0, S, S).data;
+  const out = makeCanvas(S);
+  const octx = out.getContext("2d");
+  const img = octx.createImageData(S, S);
+  const h = (x, y) => src[(((y + S) % S) * S + ((x + S) % S)) * 4] / 255;
+  for (let y = 0; y < S; y += 1) {
+    for (let x = 0; x < S; x += 1) {
+      const dx = (h(x - 1, y) - h(x + 1, y)) * strength;
+      const dy = (h(x, y - 1) - h(x, y + 1)) * strength;
+      const len = Math.hypot(dx, dy, 1) || 1;
+      const i = (y * S + x) * 4;
+      img.data[i] = ((dx / len) * 0.5 + 0.5) * 255;
+      img.data[i + 1] = ((dy / len) * 0.5 + 0.5) * 255;
+      img.data[i + 2] = (1 / len) * 0.5 * 255 + 127;
+      img.data[i + 3] = 255;
+    }
+  }
+  octx.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(out);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(repeat, repeat);
+  return tex;
+}
+
+// Height field matching the tech wall panel (seams = grooves, rivets = bumps).
+export function panelNormal(repeat = 1) {
+  const S = 256;
+  const c = makeCanvas(S);
+  const x = c.getContext("2d");
+  x.fillStyle = "#808080";
+  x.fillRect(0, 0, S, S);
+  x.strokeStyle = "#000";
+  x.lineWidth = 6;
+  x.strokeRect(3, 3, S - 6, S - 6);
+  x.beginPath();
+  x.moveTo(S / 2, 0); x.lineTo(S / 2, S);
+  x.moveTo(0, S * 0.62); x.lineTo(S, S * 0.62);
+  x.stroke();
+  x.fillStyle = "#fff";
+  for (const [rx, ry] of [[14, 14], [S - 14, 14], [14, S - 14], [S - 14, S - 14], [S / 2, 14], [S / 2, S - 14]]) {
+    x.beginPath();
+    x.arc(rx, ry, 4, 0, Math.PI * 2);
+    x.fill();
+  }
+  return heightToNormal(c, 2.4, repeat);
+}
+
+// Height field matching the tech floor tiles (grid lines = grooves).
+export function floorNormal(repeat = 1) {
+  const S = 256;
+  const c = makeCanvas(S);
+  const x = c.getContext("2d");
+  x.fillStyle = "#808080";
+  x.fillRect(0, 0, S, S);
+  x.strokeStyle = "#000";
+  x.lineWidth = 5;
+  x.strokeRect(0, 0, S, S);
+  x.lineWidth = 3;
+  x.beginPath();
+  x.moveTo(S / 2, 0); x.lineTo(S / 2, S);
+  x.moveTo(0, S / 2); x.lineTo(S, S / 2);
+  x.stroke();
+  return heightToNormal(c, 1.8, repeat);
+}
+
