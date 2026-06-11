@@ -63,6 +63,9 @@ export function createWeapons(camera, scene, world, player, hooks = {}) {
     if (obj.userData && obj.userData.type === "target") {
       const killed = world.damageTarget(obj, damage);
       if (hooks.onHitmarker) hooks.onHitmarker(killed);
+    } else if (obj.userData && obj.userData.type === "enemy") {
+      const killed = world.damageEnemy(obj.userData.enemy, damage);
+      if (hooks.onHitmarker) hooks.onHitmarker(killed);
     }
   }
 

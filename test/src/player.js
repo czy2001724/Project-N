@@ -56,10 +56,16 @@ export function createPlayer(camera, world) {
 
   function resolveCollisions() {
     const r = state.radius;
-    // clamp to room bounds
-    const limit = world.ROOM - 0.5 - r;
-    state.pos.x = clamp(state.pos.x, -limit, limit);
-    state.pos.z = clamp(state.pos.z, -limit, limit);
+    // clamp to the current region's bounds (base, or the far Area 1 room)
+    if (world.state && world.state.inArea && world.areaSpawn) {
+      const cx = world.areaSpawn.x;
+      state.pos.x = clamp(state.pos.x, cx - (11 - 0.5 - r), cx + (11 - 0.5 - r));
+      state.pos.z = clamp(state.pos.z, -(13 - 0.5 - r), 13 - 0.5 - r);
+    } else {
+      const limit = world.ROOM - 0.5 - r;
+      state.pos.x = clamp(state.pos.x, -limit, limit);
+      state.pos.z = clamp(state.pos.z, -limit, limit);
+    }
 
     // push out of cover/wall boxes (XZ only)
     for (const box of world.colliders) {

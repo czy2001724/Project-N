@@ -1,12 +1,12 @@
 import { account } from "./account.js?v=DEV";
-import { renderInventory } from "./inventory.js?v=DEV";
 
 // Front-end shell: boot logo animation -> login/register -> home lobby ->
-// backpack / enter game. The 3D game (main.js) renders behind these screens
-// and is only revealed when the player deploys.
+// enter game. The 3D game (main.js) renders behind these screens and is only
+// revealed when the player deploys. The backpack is an in-game panel (B), owned
+// by main.js, not a lobby screen.
 
 const $ = (id) => document.getElementById(id);
-const SCREENS = ["bootLogo", "authScreen", "homeScreen", "inventoryScreen"];
+const SCREENS = ["bootLogo", "authScreen", "homeScreen"];
 
 function show(id) {
   for (const s of SCREENS) {
@@ -60,12 +60,6 @@ function showHome() {
   if (document.pointerLockElement) document.exitPointerLock?.();
 }
 
-// --- backpack --------------------------------------------------------------
-function openInventory() {
-  renderInventory($("invBody"));
-  show("inventoryScreen");
-}
-
 // --- enter game ------------------------------------------------------------
 function enterGame() {
   hideAll(); // reveal the game + its "click to start" overlay
@@ -77,17 +71,14 @@ function wire() {
   $("authPass").addEventListener("keydown", (e) => { if (e.key === "Enter") doAuth("login"); });
 
   $("btnDeploy").addEventListener("click", enterGame);
-  $("btnBackpack").addEventListener("click", openInventory);
   $("btnLogout").addEventListener("click", () => { account.logout(); showAuth(); });
-
-  $("btnInvClose").addEventListener("click", showHome);
 
   const back = $("backToLobby");
   if (back) back.addEventListener("click", showHome);
 }
 
 // expose for main.js (pause menu "back to lobby")
-window.PN_SHELL = { showHome, openInventory, enterGame };
+window.PN_SHELL = { showHome, enterGame };
 
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", () => { wire(); boot(); });

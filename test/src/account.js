@@ -20,17 +20,19 @@ function hash(s) {
 // Starter loadout so the backpack isn't empty while there's no game content yet.
 function defaultData() {
   return {
+    level: 1,
     coins: 500,
-    equipment: { primary: "ak47_gold", secondary: "pistol_std", melee: "combat_knife", armor: null, gear: null },
+    skins: { ak: "black" }, // in-hand AK skin; "gold" is earned from the merchant
+    equipment: { primary: "ak47_black", secondary: "pistol_std", melee: "combat_knife", armor: null, gear: null },
     inventory: [
-      { id: "ak47_gold", qty: 1 },
+      { id: "ak47_black", qty: 1 },
       { id: "pistol_std", qty: 1 },
       { id: "combat_knife", qty: 1 },
       { id: "nano_armor", qty: 1 },
       { id: "tac_gloves", qty: 1 },
       { id: "med_stim", qty: 3 },
-      { id: "scrap", qty: 12 },
-      { id: "data_chip", qty: 2 },
+      { id: "scrap", qty: 6 },
+      { id: "data_chip", qty: 1 },
     ],
     stats: { kills: 0, deaths: 0, runs: 0 },
   };
@@ -64,12 +66,40 @@ export const account = {
     const u = this.current();
     if (!u) return null;
     const all = readAll();
-    return (all[u] && all[u].data) || null;
+    const d = all[u] && all[u].data;
+    if (!d) return null;
+    // migrate older saves
+    if (d.level == null) d.level = 1;
+    if (!d.skins) d.skins = { ak: "black" };
+    if (!d.stats) d.stats = { kills: 0, deaths: 0, runs: 0 };
+    return d;
   },
   save(data) {
     const u = this.current();
     if (!u) return;
     const all = readAll();
     if (all[u]) { all[u].data = data; writeAll(all); }
+  },
+  addItem(id, qty = 1) {
+    const d = this.getData();
+    if (!d) return;
+    const e = d.inventory.find((x) => x.id === id);
+    if (e) e.qty += qty; else d.inventory.push({ id, qty });
+    this.save(d);
+  },
+  take(id, qty = 1) {
+    const d = this.getData();
+    if (!d) return false;
+    const e = d.inventory.find((x) => x.id === id);
+    if (!e || e.qty < qty) return false;
+    e.qty -= qty;
+    if (e.qty <= 0) d.inventory = d.inventory.filter((x) => x.id !== id);
+    this.save(d);
+    return true;
+  },
+  count(id) {
+    const d = this.getData();
+    const e = d && d.inventory.find((x) => x.id === id);
+    return e ? e.qty : 0;
   },
 };

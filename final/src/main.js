@@ -10,11 +10,13 @@ import { createWeapons } from "./weapons.js?v=DEV";
 import { createUI } from "./ui.js?v=DEV";
 import { toonify } from "./toonify.js?v=DEV";
 import "./shell.js?v=DEV"; // boot logo + login + lobby + backpack (front-end shell)
+import { account } from "./account.js?v=DEV";
+import { renderInventory, ITEM_DB } from "./inventory.js?v=DEV";
 
 // Human-readable build version: YYMMDD + 3-digit deploy count for that day
 // (e.g. 260611001 = 2026-06-11, 1st deploy). Bumped by hand each deploy so a
 // refresh visibly confirms whether the new build is live.
-const BUILD_VERSION = "260611016";
+const BUILD_VERSION = "260611017";
 (() => {
   const el = document.getElementById("buildVer");
   if (el) el.textContent = `v${BUILD_VERSION}`;
@@ -33,7 +35,15 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.08, 200);
 scene.add(camera); // camera holds the weapon view-model
 
-const world = createWorld(scene);
+const world = createWorld(scene, {
+  // Walking over a loot orb in Area 1 picks it up into the account inventory.
+  onLoot(drop) {
+    account.addItem(drop.id, drop.qty);
+    const it = ITEM_DB[drop.id];
+    ui.toast(`拾取：${it ? it.name : drop.id}${drop.qty > 1 ? " ×" + drop.qty : ""}`);
+    if (charPanel && !charPanel.classList.contains("hidden")) renderInventory(charBody);
+  },
+});
 const player = createPlayer(camera, world);
 
 // --- Post-processing: clean anime presentation -------------------------
@@ -58,6 +68,20 @@ const weaponEl = document.getElementById("weapon");
 const sprintEl = document.getElementById("sprint");
 const promptEl = document.getElementById("prompt");
 
+// In-game character / backpack panel (toggle with B).
+const charPanel = document.getElementById("charPanel");
+const charBody = document.getElementById("charBody");
+function openChar() {
+  renderInventory(charBody);
+  charPanel.classList.remove("hidden");
+  if (document.pointerLockElement) document.exitPointerLock?.();
+}
+function closeChar() {
+  charPanel.classList.add("hidden");
+  requestLock();
+}
+document.getElementById("charClose").addEventListener("click", closeChar);
+
 const weapons = createWeapons(camera, scene, world, player, {
   onHitmarker() {
     // retrigger the CSS flash animation
@@ -74,7 +98,14 @@ toonify(scene, { outlineMaxRadius: 5, outlineScale: 1.045 });
 
 const ui = createUI({
   onResume: () => requestLock(),
-  onDeploy: () => {}, // hook for the future combat instance
+  onDeploy: (area) => {
+    world.enterArea1();
+    player.state.pos.copy(world.areaSpawn);
+    player.state.vy = 0;
+    const d = account.getData();
+    if (d) { d.stats.runs += 1; account.save(d); }
+    ui.toast(`已进入 ${area.name} · 走到撤离点按 E 返回`);
+  },
 });
 
 // --- Input --------------------------------------------------------------
@@ -83,6 +114,13 @@ let activeInteractable = null;
 
 function interact() {
   if (!activeInteractable) return;
+  if (activeInteractable.action === "extract") {
+    world.extract();
+    player.state.pos.copy(world.baseSpawn);
+    player.state.vy = 0;
+    ui.toast("已撤离回基地");
+    return;
+  }
   ui.openAction(activeInteractable.action);
   document.exitPointerLock?.();
 }
@@ -108,6 +146,11 @@ function updateInteraction() {
 }
 
 function onKeyDown(e) {
+  // Backpack/attributes panel: B or Esc closes it.
+  if (!charPanel.classList.contains("hidden")) {
+    if (e.code === "KeyB" || e.code === "Escape") closeChar();
+    return;
+  }
   // While a menu is open, only Esc (close) is handled.
   if (ui.isOpen()) {
     if (e.code === "Escape") {
@@ -116,6 +159,7 @@ function onKeyDown(e) {
     }
     return;
   }
+  if (e.code === "KeyB" && inputState.locked) { openChar(); return; }
   if (["KeyW", "KeyA", "KeyS", "KeyD", "Space", "ShiftLeft", "ControlLeft"].includes(e.code)) {
     e.preventDefault();
   }
@@ -152,9 +196,15 @@ function requestLock() {
 
 function onPointerLockChange() {
   inputState.locked = document.pointerLockElement === renderer.domElement;
-  // Show the start overlay only when paused with no menu panel open.
-  overlay.classList.toggle("hidden", inputState.locked || ui.isOpen());
+  // Show the start overlay only when paused with no menu/backpack panel open.
+  const panelOpen = ui.isOpen() || !charPanel.classList.contains("hidden");
+  overlay.classList.toggle("hidden", inputState.locked || panelOpen);
   crosshair.style.display = inputState.locked ? "block" : "none";
+  // Sync the in-hand AK skin to the account (gold once unlocked from merchant).
+  if (inputState.locked && window.__PN_SET_AK_SKIN__) {
+    const d = account.getData();
+    window.__PN_SET_AK_SKIN__(d && d.skins && d.skins.ak === "gold" ? "gold" : "black");
+  }
   if (!inputState.locked) {
     weapons.triggerUp();
     player.keys.clear();
@@ -205,7 +255,7 @@ function animate(now) {
   if (inputState.locked) {
     player.update(dt);
     weapons.update(dt, now / 1000);
-    world.update(dt);
+    world.update(dt, player.state.pos);
     updateInteraction();
   }
 

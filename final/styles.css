@@ -613,3 +613,13 @@ canvas {
   margin-top: 8px; background: transparent; border: 1px solid #345067; color: #cfe2f2;
 }
 #overlay .panel button.ghost:hover { background: rgba(60, 110, 150, 0.2); }
+
+/* in-game character / backpack panel (B) */
+#charPanel { position: fixed; inset: 0; z-index: 150; display: grid; place-items: center; background: rgba(6, 10, 16, 0.78); }
+.home-tips { position: absolute; bottom: 26px; left: 0; right: 0; text-align: center; font-size: 13px; color: #8fa8bf; }
+.home-tips b { color: #6fe0ff; }
+.inv-attrs { display: flex; gap: 26px; padding: 14px 22px; border-bottom: 1px solid #1e3346; }
+.inv-attrs .attr { display: flex; flex-direction: column; gap: 2px; }
+.inv-attrs .attr span { font-size: 11px; color: #7c93a8; }
+.inv-attrs .attr b { font-size: 18px; color: #eaf4ff; }
+.inv-attrs .attr b.coin { color: #ffce3a; }

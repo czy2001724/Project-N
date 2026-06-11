@@ -3,15 +3,37 @@ import { account } from "./account.js?v=DEV";
 // Item database. Equip-able types: primary / secondary / melee / armor / gear.
 // "material" items are non-equippable (stackable resources / consumables).
 export const ITEM_DB = {
-  ak47_gold: { name: "黄金 AK-47", type: "primary", rarity: "legend", icon: "🔫", stats: { 伤害: 42, 射速: 600, 稳定: 70 }, desc: "传说级金枪，火力与排面兼具。" },
+  ak47_black: { name: "AK-47", type: "primary", rarity: "common", icon: "🔫", stats: { 伤害: 38, 射速: 600, 稳定: 65 }, desc: "制式突击步枪（默认黑色涂装）。" },
+  ak47_gold: { name: "黄金 AK-47", type: "primary", rarity: "legend", icon: "🔫", stats: { 伤害: 42, 射速: 600, 稳定: 70 }, desc: "传说级金枪，可在商人处用材料兑换。" },
+  smg_proto: { name: "原型冲锋枪", type: "primary", rarity: "epic", icon: "🔫", stats: { 伤害: 22, 射速: 900 }, desc: "实验型高射速冲锋枪，Area 区域掉落。" },
   pistol_std: { name: "制式手枪", type: "secondary", rarity: "common", icon: "🔫", stats: { 伤害: 26, 射速: 300 }, desc: "可靠的副武器。" },
   combat_knife: { name: "作战匕首", type: "melee", rarity: "common", icon: "🗡️", stats: { 伤害: 150 }, desc: "近身致命。" },
   nano_armor: { name: "纳米护甲", type: "armor", rarity: "epic", icon: "🛡️", stats: { 护甲: 50, 移动: -5 }, desc: "吸收伤害的纳米装甲。" },
   tac_gloves: { name: "战术手套", type: "gear", rarity: "rare", icon: "🧤", stats: { 换弹: "+15%" }, desc: "提升换弹速度。" },
   med_stim: { name: "医疗针剂", type: "material", rarity: "common", icon: "💉", stats: {}, desc: "消耗品，回复生命。" },
-  scrap: { name: "合金废料", type: "material", rarity: "common", icon: "⚙️", stats: {}, desc: "通用制造材料。" },
+  scrap: { name: "合金废料", type: "material", rarity: "common", icon: "⚙️", stats: {}, desc: "通用制造材料，可在商人处兑换武器。" },
   data_chip: { name: "数据芯片", type: "material", rarity: "rare", icon: "💾", stats: {}, desc: "用于解锁与升级。" },
 };
+
+// Drop table for Area enemies: mostly materials, small chance of a finished
+// weapon. Returns { id, qty }.
+const LOOT_TABLE = [
+  { id: "scrap", min: 1, max: 3, w: 52 },
+  { id: "data_chip", min: 1, max: 1, w: 24 },
+  { id: "med_stim", min: 1, max: 1, w: 13 },
+  { id: "smg_proto", min: 1, max: 1, w: 8 }, // small chance: finished weapon
+  { id: "ak47_gold", min: 1, max: 1, w: 3 }, // rare: gold AK directly
+];
+export function rollLoot() {
+  const total = LOOT_TABLE.reduce((s, e) => s + e.w, 0);
+  let r = Math.random() * total;
+  for (const e of LOOT_TABLE) {
+    r -= e.w;
+    if (r <= 0) return { id: e.id, qty: e.min + Math.floor(Math.random() * (e.max - e.min + 1)) };
+  }
+  return { id: "scrap", qty: 1 };
+}
+export const RARITY_COLOR = { common: "#9fb3c8", rare: "#4aa3ff", epic: "#b06bff", legend: "#ffce3a" };
 
 const SLOTS = [
   { key: "primary", label: "主武器" },
@@ -34,6 +56,15 @@ export function renderInventory(root) {
   const data = account.getData();
   if (!data) { root.innerHTML = "<p style='padding:20px'>未登录</p>"; return; }
   root.innerHTML = "";
+
+  // attributes strip (personal stats)
+  const attr = el("div", "inv-attrs");
+  attr.innerHTML =
+    `<div class="attr"><span>等级</span><b>Lv.${data.level}</b></div>` +
+    `<div class="attr"><span>金币</span><b class="coin">◈ ${data.coins}</b></div>` +
+    `<div class="attr"><span>击杀</span><b>${data.stats.kills}</b></div>` +
+    `<div class="attr"><span>出击</span><b>${data.stats.runs}</b></div>`;
+  root.appendChild(attr);
 
   const wrap = el("div", "inv-wrap");
   // --- left: equipment slots ---

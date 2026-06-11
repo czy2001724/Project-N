@@ -1,41 +1,49 @@
-// DOM-based menus for the base: vendor, missions and the deploy (dungeon
-// select) door. Opening a panel frees the mouse; closing re-locks the game.
+import { account } from "./account.js?v=DEV";
+import { ITEM_DB } from "./inventory.js?v=DEV";
+
+// DOM-based menus for the base: vendor (armory), missions, and the deploy
+// (area select) door. Opening a panel frees the mouse; closing re-locks the
+// game.
 
 const VENDOR_ITEMS = [
   { name: "步枪弹药 ×60", price: 120 },
   { name: "手枪弹药 ×36", price: 80 },
-  { name: "医疗包", price: 200 },
-  { name: "轻型护甲", price: 450 },
-  { name: "步枪改装件", price: 900 },
+  { name: "医疗针剂 ×1", price: 200, give: "med_stim" },
+  { name: "数据芯片 ×1", price: 350, give: "data_chip" },
 ];
+
+// Exchange materials for the gold AK skin.
+const GOLD_AK_COST = [{ id: "scrap", qty: 8 }, { id: "data_chip", qty: 3 }];
 
 const MISSIONS = [
   { name: "清剿前哨", desc: "在废弃设施消灭 12 个敌人", reward: "₡ 600 + 材料 ×4" },
   { name: "回收数据", desc: "潜入异常区域取回 3 份数据核心", reward: "₡ 850 + 改装件" },
-  { name: "猎杀目标", desc: "击杀精英单位「锈蚀者」", reward: "₡ 1200 + 稀有装备" },
 ];
 
-const DUNGEONS = [
-  { name: "废弃设施", diff: "普通", desc: "适合新晋探险者的低危区域。" },
-  { name: "异常区域", diff: "危险", desc: "环境不稳定，敌人更强，掉落更好。" },
-  { name: "Boss 巢穴", diff: "高危", desc: "强敌据点，仅限装备精良者挑战。" },
+const AREAS = [
+  { id: "area1", name: "AREA 1 · 白色设施", diff: "普通", reqLevel: 1,
+    desc: "白色训练设施，银装训练兵驻守。击杀掉落材料，小概率掉成品武器。" },
 ];
 
 export function createUI(hooks = {}) {
-  const credits = { value: 1500 };
-
   const root = document.createElement("div");
   root.id = "menuRoot";
   root.className = "hidden";
   document.body.appendChild(root);
 
   let open = false;
+  const coins = () => { const d = account.getData(); return d ? d.coins : 0; };
 
   function close() {
     open = false;
     root.className = "hidden";
     root.innerHTML = "";
     if (hooks.onClose) hooks.onClose();
+  }
+
+  function refreshCoins() {
+    const c = root.querySelector(".credits b");
+    if (c) c.textContent = `◈ ${coins()}`;
   }
 
   function shell(title, sub) {
@@ -49,7 +57,7 @@ export function createUI(hooks = {}) {
           <h2>${title}</h2>
           <p>${sub}</p>
         </div>
-        <div class="credits">余额 <b>₡ ${credits.value}</b></div>
+        <div class="credits">余额 <b>◈ ${coins()}</b></div>
       </div>
       <div class="menuBody"></div>
       <button class="menuClose">关闭 (Esc)</button>
@@ -68,31 +76,61 @@ export function createUI(hooks = {}) {
     el.textContent = msg;
     document.body.appendChild(el);
     setTimeout(() => el.classList.add("show"), 10);
-    setTimeout(() => {
-      el.classList.remove("show");
-      setTimeout(() => el.remove(), 400);
-    }, 2200);
+    setTimeout(() => { el.classList.remove("show"); setTimeout(() => el.remove(), 400); }, 2200);
   }
+
+  function costText(cost) {
+    return cost.map((c) => `${ITEM_DB[c.id].name}×${c.qty}`).join(" + ");
+  }
+  function canAfford(cost) { return cost.every((c) => account.count(c.id) >= c.qty); }
 
   function openVendor() {
     open = true;
-    const body = shell("装备商店", "购买弹药、护甲与改装件");
+    const body = shell("装备商人 · 军械", "用材料兑换高级武器，或购买补给");
+
+    // --- gold AK exchange ---
+    const data = account.getData();
+    const owned = data && data.skins && data.skins.ak === "gold";
+    const row = document.createElement("div");
+    row.className = "listRow tall";
+    row.innerHTML = `<div class="rowText"><span class="rowName">黄金 AK-47 <em class="diff diff-高危">传说</em></span>
+      <span class="rowDesc">把手中的 AK 升级为金色涂装。材料：${costText(GOLD_AK_COST)}</span></div>
+      <button class="rowBtn deploy">${owned ? "已拥有" : "兑换"}</button>`;
+    const btn = row.querySelector(".rowBtn");
+    if (owned) btn.disabled = true;
+    btn.addEventListener("click", () => {
+      if (account.getData().skins.ak === "gold") return;
+      if (!canAfford(GOLD_AK_COST)) { toast("材料不足"); return; }
+      for (const c of GOLD_AK_COST) account.take(c.id, c.qty);
+      const d2 = account.getData();
+      d2.skins.ak = "gold";
+      if (!d2.inventory.find((x) => x.id === "ak47_gold")) d2.inventory.push({ id: "ak47_gold", qty: 1 });
+      d2.equipment.primary = "ak47_gold";
+      account.save(d2);
+      if (window.__PN_SET_AK_SKIN__) window.__PN_SET_AK_SKIN__("gold"); // recolour the in-hand AK live
+      btn.textContent = "已拥有"; btn.disabled = true;
+      toast("已兑换：黄金 AK-47 ✦");
+    });
+    body.appendChild(row);
+
+    // --- consumables (coins) ---
     for (const item of VENDOR_ITEMS) {
-      const row = document.createElement("div");
-      row.className = "listRow";
-      row.innerHTML = `<span class="rowName">${item.name}</span>
-        <span class="rowMeta">₡ ${item.price}</span>
+      const r = document.createElement("div");
+      r.className = "listRow";
+      r.innerHTML = `<span class="rowName">${item.name}</span>
+        <span class="rowMeta">◈ ${item.price}</span>
         <button class="rowBtn">购买</button>`;
-      row.querySelector(".rowBtn").addEventListener("click", () => {
-        if (credits.value >= item.price) {
-          credits.value -= item.price;
-          root.querySelector(".credits b").textContent = `₡ ${credits.value}`;
+      r.querySelector(".rowBtn").addEventListener("click", () => {
+        const d = account.getData();
+        if (d.coins >= item.price) {
+          d.coins -= item.price;
+          if (item.give) { const e = d.inventory.find((x) => x.id === item.give); if (e) e.qty += 1; else d.inventory.push({ id: item.give, qty: 1 }); }
+          account.save(d);
+          refreshCoins();
           toast(`已购买：${item.name}`);
-        } else {
-          toast("余额不足");
-        }
+        } else { toast("余额不足"); }
       });
-      body.appendChild(row);
+      body.appendChild(r);
     }
   }
 
@@ -107,8 +145,7 @@ export function createUI(hooks = {}) {
         <span class="rowReward">奖励：${m.reward}</span></div>
         <button class="rowBtn">接取</button>`;
       row.querySelector(".rowBtn").addEventListener("click", (e) => {
-        e.target.textContent = "已接取";
-        e.target.disabled = true;
+        e.target.textContent = "已接取"; e.target.disabled = true;
         toast(`已接取任务：${m.name}`);
       });
       body.appendChild(row);
@@ -117,18 +154,23 @@ export function createUI(hooks = {}) {
 
   function openDeploy() {
     open = true;
-    const body = shell("选择副本", "选择部署区域并出击");
-    for (const d of DUNGEONS) {
+    const body = shell("部署门 · 选择副本", "选择作战区域并出击");
+    const lvl = (account.getData() || { level: 1 }).level;
+    for (const a of AREAS) {
+      const meets = lvl >= a.reqLevel;
       const row = document.createElement("div");
       row.className = "listRow tall";
-      row.innerHTML = `<div class="rowText"><span class="rowName">${d.name}
-        <em class="diff diff-${d.diff}">${d.diff}</em></span>
-        <span class="rowDesc">${d.desc}</span></div>
-        <button class="rowBtn deploy">部署</button>`;
-      row.querySelector(".rowBtn").addEventListener("click", () => {
-        toast(`正在部署到「${d.name}」…（战斗关卡开发中）`);
-        if (hooks.onDeploy) hooks.onDeploy(d);
+      row.innerHTML = `<div class="rowText"><span class="rowName">${a.name}
+        <em class="diff diff-${a.diff}">${a.diff}</em></span>
+        <span class="rowDesc">${a.desc}</span>
+        <span class="rowReward">进入要求：等级 ${a.reqLevel}（当前 Lv.${lvl}）</span></div>
+        <button class="rowBtn deploy">${meets ? "部署" : `需要等级 ${a.reqLevel}`}</button>`;
+      const btn = row.querySelector(".rowBtn");
+      if (!meets) btn.disabled = true;
+      btn.addEventListener("click", () => {
+        toast(`正在部署到「${a.name}」…`);
         close();
+        if (hooks.onDeploy) hooks.onDeploy(a);
         if (hooks.onResume) hooks.onResume();
       });
       body.appendChild(row);

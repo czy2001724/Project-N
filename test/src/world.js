@@ -1,11 +1,12 @@
 import * as THREE from "three";
 import { techPanel, techFloor, hazardStripes, brushedMetal, holoScreen } from "./textures.js?v=DEV";
+import { rollLoot, ITEM_DB, RARITY_COLOR } from "./inventory.js?v=DEV";
 
 // Futuristic command-hub base. Uses beveled extruded panels, polygonal
 // columns, a lathed dome, trusses, light coves and energy conduits instead
 // of plain slabs, so it reads as designed sci-fi architecture rather than a
 // metal box. Materials are MeshStandard (the toonify pass cel-shades them).
-export function createWorld(scene) {
+export function createWorld(scene, hooks = {}) {
   const ROOM = 16;
   const HEIGHT = 7.5;
 
@@ -341,7 +342,100 @@ export function createWorld(scene) {
     targets.push(mesh);
   }
 
-  const state = { score: 0, time: 0 };
+  // =====================================================================
+  // AREA 1 — white training facility (built far away; player teleports in).
+  const AX = 260; // x offset of the area region from the base
+  const areaSpawn = new THREE.Vector3(AX, 0, 8.5);
+  const baseSpawn = new THREE.Vector3(0, 0, 9);
+  const enemies = [];
+  const loot = [];
+
+  (function buildArea1() {
+    const W = 22, D = 26, H = 6;
+    const white = new THREE.MeshStandardMaterial({ color: 0xe9eef4, roughness: 0.85, metalness: 0.05 });
+    const white2 = new THREE.MeshStandardMaterial({ color: 0xccd6e0, roughness: 0.9, metalness: 0.05 });
+    const f = boxMesh(W, 0.2, D, white, AX, -0.1, 0); f.receiveShadow = true; scene.add(f); solids.push(f);
+    scene.add(boxMesh(W, 0.2, D, white2, AX, H, 0));
+    add(boxMesh(W, H, 0.4, white, AX, H / 2, -D / 2), true);
+    add(boxMesh(W, H, 0.4, white, AX, H / 2, D / 2), true);
+    add(boxMesh(0.4, H, D, white, AX - W / 2, H / 2, 0), true);
+    add(boxMesh(0.4, H, D, white, AX + W / 2, H / 2, 0), true);
+    for (let gz = -D / 2 + 3; gz <= D / 2 - 3; gz += 5) scene.add(boxMesh(W - 2, 0.06, 0.5, cyan, AX, H - 0.2, gz));
+    for (const [bx, bz] of [[-5, -3], [5, 2], [-4, 6], [6, -6]]) add(boxMesh(2, 1.2, 2, white2, AX + bx, 0.6, bz), true);
+    // extract pad (return to base)
+    scene.add(place(new THREE.Mesh(new THREE.RingGeometry(1.1, 1.4, 40), mint), AX, 0.05, 9).rotateX(-Math.PI / 2));
+    scene.add(col(1.5, 0.1, mint, AX, 0.06, 9, 24));
+    const exLabel = makeLabel("撤离点 [E]", "#8effb0"); exLabel.position.set(AX, 2.2, 9); scene.add(exLabel);
+    const areaLabel = makeLabel("AREA 1 · 白色设施", "#cfe2f2"); areaLabel.position.set(AX, 4.6, -D / 2 + 1); scene.add(areaLabel);
+  })();
+  interactables.push({ name: "撤离点", action: "extract", pos: new THREE.Vector3(AX, 0, 9), radius: 2.4 });
+
+  function buildSoldier(suitColor) {
+    const g = new THREE.Group();
+    const suit = new THREE.MeshStandardMaterial({ color: suitColor, roughness: 0.45, metalness: 0.5 });
+    const plate = new THREE.MeshStandardMaterial({ color: 0x6a7686, roughness: 0.4, metalness: 0.6 });
+    const visorM = new THREE.MeshStandardMaterial({ color: 0xff5a5a, emissive: 0xff3a3a, emissiveIntensity: 0.8, roughness: 0.3 });
+    const torsoM = new THREE.Mesh(new THREE.CapsuleGeometry(0.27, 0.42, 6, 14), suit); torsoM.position.y = 1.3;
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 18, 14), plate); head.position.y = 1.86;
+    const visor = new THREE.Mesh(new THREE.SphereGeometry(0.14, 14, 10), visorM); visor.position.set(0, 1.86, 0.1); visor.scale.set(1, 0.55, 0.6);
+    const sL = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 10), plate); sL.position.set(-0.34, 1.5, 0);
+    const sR = sL.clone(); sR.position.x = 0.34;
+    const limb = (r, len, px, py) => { const m = new THREE.Mesh(new THREE.CapsuleGeometry(r, len, 5, 10), suit); m.position.set(px, py, 0); return m; };
+    for (const part of [torsoM, head, visor, sL, sR, limb(0.085, 0.42, -0.4, 1.18), limb(0.085, 0.42, 0.4, 1.18), limb(0.12, 0.5, -0.15, 0.45), limb(0.12, 0.5, 0.15, 0.45)]) {
+      part.castShadow = true; g.add(part);
+    }
+    return g;
+  }
+  function makeEnemy(x, z) {
+    const g = buildSoldier(0xc8d2dc); // silver training suit
+    g.position.set(AX + x, 0, z);
+    const ctrl = { group: g, health: 60, maxHealth: 60, alive: true, hitFlash: 0, phase: Math.random() * 6 };
+    const bodies = [];
+    g.traverse((m) => { if (m.isMesh) { m.userData.type = "enemy"; m.userData.enemy = ctrl; bodies.push(m); } });
+    ctrl.bodies = bodies;
+    scene.add(g);
+    enemies.push(ctrl);
+    return ctrl;
+  }
+
+  const state = { score: 0, time: 0, inArea: false };
+
+  function spawnWave(n) {
+    for (const e of enemies) scene.remove(e.group);
+    enemies.length = 0;
+    const spots = [[-6, -4], [6, -3], [-3, 3], [4, 5], [0, -7], [7, 1], [-7, 2], [2, -2]];
+    for (let i = 0; i < Math.min(n, spots.length); i += 1) makeEnemy(spots[i][0], spots[i][1]);
+  }
+  function spawnLoot(pos) {
+    const drop = rollLoot();
+    const item = ITEM_DB[drop.id];
+    const c = new THREE.Color(RARITY_COLOR[item ? item.rarity : "common"]);
+    const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(0.22, 0), new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 0.95, roughness: 0.4 }));
+    orb.position.set(pos.x, 0.5, pos.z); orb.castShadow = true; scene.add(orb);
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.2, 8), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.35 }));
+    beam.position.set(pos.x, 1.1, pos.z); scene.add(beam);
+    loot.push({ orb, beam, drop, baseY: 0.5, phase: Math.random() * 6 });
+  }
+  function clearLoot() { for (const l of loot) { scene.remove(l.orb); scene.remove(l.beam); } loot.length = 0; }
+  function damageEnemy(ctrl, dmg) {
+    if (!ctrl || !ctrl.alive) return false;
+    ctrl.health -= dmg; ctrl.hitFlash = 1;
+    if (ctrl.health <= 0) {
+      ctrl.alive = false; ctrl.group.visible = false;
+      spawnLoot(ctrl.group.position);
+      state.score += 1;
+      return true;
+    }
+    return false;
+  }
+  function enterArea1() { clearLoot(); spawnWave(8); state.inArea = true; }
+  function extract() {
+    state.inArea = false;
+    for (const e of enemies) scene.remove(e.group);
+    enemies.length = 0;
+    clearLoot();
+  }
+  function enemiesLeft() { let n = 0; for (const e of enemies) if (e.alive) n += 1; return n; }
 
   function damageTarget(mesh, dmg) {
     const d = mesh.userData;
@@ -361,14 +455,37 @@ export function createWorld(scene) {
   function getHittables() {
     const list = solids.slice();
     for (const tgt of targets) if (tgt.userData.alive) list.push(tgt);
+    for (const e of enemies) if (e.alive) for (const b of e.bodies) list.push(b);
     return list;
   }
 
-  function update(dt) {
+  function update(dt, playerPos) {
     state.time += dt;
     for (const d of decor) {
       if (d.axis === "y") d.mesh.rotation.y += dt * d.spin;
       else d.mesh.rotation.z += dt * d.spin;
+    }
+    // Area 1 enemies: bob, face the player, flash when hit.
+    for (const e of enemies) {
+      if (!e.alive) continue;
+      e.group.position.y = Math.sin(state.time * 1.6 + e.phase) * 0.04;
+      if (playerPos) { e.group.lookAt(playerPos.x, e.group.position.y + 1.3, playerPos.z); e.group.rotateY(Math.PI); }
+      if (e.hitFlash > 0) e.hitFlash = Math.max(0, e.hitFlash - dt * 4);
+    }
+    // loot orbs: bob + spin, pick up when the player walks over them.
+    for (let i = loot.length - 1; i >= 0; i -= 1) {
+      const l = loot[i];
+      l.orb.position.y = l.baseY + Math.sin(state.time * 3 + l.phase) * 0.12;
+      l.orb.rotation.y += dt * 2;
+      if (playerPos) {
+        const dx = playerPos.x - l.orb.position.x;
+        const dz = playerPos.z - l.orb.position.z;
+        if (dx * dx + dz * dz < 1.7) {
+          scene.remove(l.orb); scene.remove(l.beam);
+          loot.splice(i, 1);
+          if (hooks.onLoot) hooks.onLoot(l.drop);
+        }
+      }
     }
     for (const mesh of targets) {
       const d = mesh.userData;
@@ -390,5 +507,9 @@ export function createWorld(scene) {
     }
   }
 
-  return { ROOM, colliders, solids, targets, interactables, state, damageTarget, getHittables, update };
+  return {
+    ROOM, colliders, solids, targets, interactables, state,
+    damageTarget, damageEnemy, getHittables, update,
+    enterArea1, extract, enemiesLeft, areaSpawn, baseSpawn,
+  };
 }

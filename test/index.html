@@ -85,28 +85,21 @@
       </div>
       <div class="home-menu">
         <button id="btnDeploy" class="home-card deploy">
-          <div class="hc-title">进入训练场</div>
-          <div class="hc-sub">DEPLOY · 自由练习</div>
-        </button>
-        <button id="btnBackpack" class="home-card pack">
-          <div class="hc-title">个人背包</div>
-          <div class="hc-sub">INVENTORY · 装备与道具</div>
-        </button>
-        <button class="home-card soon" disabled>
-          <div class="hc-title">作战区域</div>
-          <div class="hc-sub">COMING SOON · 掉落装备</div>
+          <div class="hc-title">进入基地</div>
+          <div class="hc-sub">DEPLOY · 训练场 + 部署门</div>
         </button>
       </div>
+      <div class="home-tips">进入后：按 <b>B</b> 打开背包/属性 · 走到<b>部署门</b>选择 Area 1 · 走到<b>商人</b>兑换金 AK</div>
     </div>
 
-    <!-- ===== Backpack ===== -->
-    <div id="inventoryScreen" class="hidden">
+    <!-- ===== In-game character / backpack panel (toggle with B) ===== -->
+    <div id="charPanel" class="hidden">
       <div class="inv-panel">
         <div class="inv-head">
-          <h2>个人背包</h2>
-          <button id="btnInvClose" class="btn-tiny">关闭 ✕</button>
+          <h2>背包 · 属性</h2>
+          <button id="charClose" class="btn-tiny">关闭 (B)</button>
         </div>
-        <div id="invBody"></div>
+        <div id="charBody"></div>
       </div>
     </div>
 

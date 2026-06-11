@@ -21,6 +21,13 @@ const POS = new THREE.Vector3(-0.625, -1.055, 0.345);
 export function loadAK(onReady, onError) {
   const EMB = (typeof window !== "undefined") ? window.__PN_AK_ASSETS__ : null;
 
+  // Skin tint for the gun body (the gold textures are multiplied by this color):
+  // "gold" shows the texture as-is, "black" darkens it to gunmetal. Earned from
+  // the merchant.
+  const SKIN_HEX = { gold: 0xffffff, black: 0x34353c };
+  const gunMats = [];
+  const skin = (typeof window !== "undefined" && window.__PN_AK_SKIN__) || "black";
+
   const texLoader = new THREE.TextureLoader();
   if (!EMB) texLoader.setPath("assets/ak/");
   const cache = {};
@@ -43,9 +50,12 @@ export function loadAK(onReady, onError) {
     if (ti < 3) {
       return new THREE.MeshToonMaterial({ color: 0xeac09a, emissive: 0x241a10, side: THREE.DoubleSide });
     }
-    return new THREE.MeshBasicMaterial({
+    const gm = new THREE.MeshBasicMaterial({
       map: tex(ti), transparent: true, alphaTest: 0.5, side: THREE.DoubleSide,
     });
+    gm.color.setHex(SKIN_HEX[skin] || SKIN_HEX.black);
+    gunMats.push(gm);
+    return gm;
   }
 
   function finish(root) {
@@ -88,6 +98,13 @@ export function loadAK(onReady, onError) {
       if (v.z < minZ + 0.04) { sx += v.x; sy += v.y; n += 1; }
     }
     const muzzle = new THREE.Vector3(n ? sx / n : 0, n ? sy / n : 0, minZ - 0.02);
+    // live skin switch (used by the merchant when the gold AK is unlocked)
+    if (typeof window !== "undefined") {
+      window.__PN_SET_AK_SKIN__ = (s) => {
+        const hex = SKIN_HEX[s] || SKIN_HEX.black;
+        gunMats.forEach((m) => m.color.setHex(hex));
+      };
+    }
     onReady(holder, muzzle);
   }
 
