@@ -3,47 +3,61 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Project N — 雏形 M1</title>
-    <link rel="stylesheet" href="./styles.css" />
-
-    <!-- Three.js from CDN via import map (no build step needed) -->
-    <script type="importmap">
-      {
-        "imports": {
-          "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-          "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-        }
+    <title>Project N</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body {
+        width: 100%; height: 100%;
+        background: radial-gradient(circle at 50% 35%, #14304a, #070d14 70%);
+        color: #e8eef4;
+        font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+        display: grid; place-items: center;
+        overflow: hidden;
       }
-    </script>
+      .wrap { text-align: center; padding: 24px; }
+      h1 {
+        font-size: clamp(40px, 9vw, 80px);
+        letter-spacing: 10px;
+        color: #7fd1ff;
+        text-shadow: 0 0 30px rgba(80, 180, 255, 0.55);
+      }
+      .sub { margin-top: 8px; opacity: 0.65; letter-spacing: 4px; font-size: 14px; }
+      .cards { margin-top: 48px; display: flex; gap: 26px; flex-wrap: wrap; justify-content: center; }
+      a.card {
+        display: block; width: 240px; padding: 28px 24px;
+        text-decoration: none; color: #e8eef4;
+        background: linear-gradient(180deg, rgba(30, 48, 66, 0.9), rgba(14, 22, 30, 0.9));
+        border: 1px solid rgba(127, 209, 255, 0.3);
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        transition: transform 0.12s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+      }
+      a.card:hover { transform: translateY(-6px); box-shadow: 0 18px 40px rgba(60, 160, 230, 0.4); border-color: rgba(127, 209, 255, 0.7); }
+      a.card .tag { font-size: 13px; letter-spacing: 3px; opacity: 0.7; }
+      a.card .name { margin-top: 10px; font-size: 30px; font-weight: 700; }
+      a.card.test .name { color: #8effb0; }
+      a.card.final .name { color: #ffd23f; }
+      a.card .desc { margin-top: 12px; font-size: 12px; opacity: 0.6; line-height: 1.6; }
+      .foot { margin-top: 40px; font-size: 12px; opacity: 0.4; }
+    </style>
   </head>
   <body>
-    <div id="hud">
-      <div class="title">Project N — M1 雏形</div>
-      <div class="hint">WASD 移动 · 鼠标瞄准 · 左键攻击 · E 交互 · 1/2/3 切换武器 · R 换弹 · 按住 Shift 冲刺 · Ctrl 蹲 · Space 跳</div>
-    </div>
-
-    <div id="vignette" aria-hidden="true"></div>
-    <div id="crosshair" aria-hidden="true"><span></span></div>
-    <div id="hitmarker" aria-hidden="true"></div>
-    <div id="prompt"></div>
-
-    <div id="stats">
-      <div class="row"><span class="label">击杀</span><span id="score">0</span></div>
-      <div class="row"><span class="label">武器</span><span id="weapon">步枪</span></div>
-      <div class="row"><span class="label">冲刺</span><span id="sprint">关</span></div>
-      <div class="row"><span class="label">弹药</span><span id="ammo">30 / 150</span></div>
-      <div class="row"><span class="label">生命</span><span id="health">100</span></div>
-    </div>
-
-    <div id="overlay">
-      <div class="panel">
-        <h1>Project N</h1>
-        <p>科幻射击雏形 · M1</p>
-        <button id="startBtn">点击开始</button>
-        <p class="sub">点击后锁定鼠标，按 Esc 释放</p>
+    <div class="wrap">
+      <h1>PROJECT N</h1>
+      <div class="sub">科幻刷宝射击 · 选择版本</div>
+      <div class="cards">
+        <a class="card test" href="./test/">
+          <div class="tag">TEST</div>
+          <div class="name">测试版</div>
+          <div class="desc">最新开发中的内容<br />可能不稳定</div>
+        </a>
+        <a class="card final" href="./final/">
+          <div class="tag">RELEASE</div>
+          <div class="name">最终版</div>
+          <div class="desc">稳定版本<br />经过测试确认</div>
+        </a>
       </div>
+      <div class="foot">旧 WebGL 原型：<a href="./legacy/" style="color:#7fb0d0">/legacy/</a></div>
     </div>
-
-    <script type="module" src="./src/main.js?v=DEV"></script>
   </body>
 </html>

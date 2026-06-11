@@ -1,0 +1,483 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #0e1418;
+  color: #e8eef4;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  user-select: none;
+}
+
+canvas {
+  display: block;
+}
+
+#hud {
+  position: fixed;
+  top: 14px;
+  left: 16px;
+  z-index: 5;
+  pointer-events: none;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+#hud .title {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: #7fd1ff;
+}
+
+#hud .hint {
+  margin-top: 4px;
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+/* Crosshair */
+#crosshair {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 22px;
+  height: 22px;
+  transform: translate(-50%, -50%);
+  z-index: 5;
+  pointer-events: none;
+  display: none;
+}
+
+#crosshair::before,
+#crosshair::after {
+  content: "";
+  position: absolute;
+  background: rgba(230, 245, 255, 0.85);
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.6);
+}
+
+#crosshair::before {
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  transform: translateY(-50%);
+}
+
+#crosshair::after {
+  left: 50%;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  transform: translateX(-50%);
+}
+
+#crosshair span {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  background: #ff5566;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* Hit marker flashes when a target is hit */
+#hitmarker {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 26px;
+  height: 26px;
+  transform: translate(-50%, -50%) rotate(45deg) scale(0.6);
+  z-index: 6;
+  pointer-events: none;
+  opacity: 0;
+}
+
+#hitmarker::before,
+#hitmarker::after {
+  content: "";
+  position: absolute;
+  background: #ffd23f;
+}
+
+#hitmarker::before {
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  transform: translateY(-50%);
+}
+
+#hitmarker::after {
+  left: 50%;
+  top: 0;
+  width: 3px;
+  height: 100%;
+  transform: translateX(-50%);
+}
+
+#hitmarker.show {
+  animation: hit 0.18s ease-out;
+}
+
+@keyframes hit {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(45deg) scale(0.4);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(45deg) scale(1);
+  }
+}
+
+/* Stats panel */
+#stats {
+  position: fixed;
+  right: 18px;
+  bottom: 16px;
+  z-index: 5;
+  pointer-events: none;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#stats .row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  align-items: baseline;
+  margin-top: 4px;
+}
+
+#stats .label {
+  font-size: 11px;
+  opacity: 0.55;
+  letter-spacing: 1px;
+}
+
+#stats #score,
+#stats #weapon,
+#stats #sprint,
+#stats #ammo,
+#stats #health {
+  font-size: 20px;
+  font-weight: 600;
+  color: #cfe6ff;
+  min-width: 80px;
+}
+
+/* Start overlay */
+#overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 50% 40%, rgba(20, 40, 60, 0.6), rgba(8, 12, 16, 0.92));
+  backdrop-filter: blur(2px);
+}
+
+#overlay.hidden {
+  display: none;
+}
+
+#overlay .panel {
+  text-align: center;
+}
+
+#overlay h1 {
+  font-size: 46px;
+  letter-spacing: 6px;
+  color: #7fd1ff;
+  text-shadow: 0 0 24px rgba(80, 180, 255, 0.5);
+}
+
+#overlay .panel > p {
+  margin-top: 8px;
+  opacity: 0.7;
+  letter-spacing: 2px;
+}
+
+#overlay .sub {
+  margin-top: 14px !important;
+  font-size: 12px;
+  opacity: 0.45 !important;
+}
+
+#startBtn {
+  margin-top: 26px;
+  padding: 12px 40px;
+  font-size: 16px;
+  letter-spacing: 2px;
+  color: #06121c;
+  background: linear-gradient(180deg, #8fe0ff, #3fa8e0);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.2s ease;
+  box-shadow: 0 6px 20px rgba(60, 160, 230, 0.4);
+}
+
+#startBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(60, 160, 230, 0.55);
+}
+
+#startBtn:active {
+  transform: translateY(0);
+}
+
+/* Interaction prompt */
+#prompt {
+  position: fixed;
+  top: 58%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  display: none;
+  padding: 8px 18px;
+  background: rgba(8, 14, 20, 0.72);
+  border: 1px solid rgba(127, 209, 255, 0.5);
+  border-radius: 8px;
+  color: #cfe6ff;
+  font-size: 15px;
+  letter-spacing: 1px;
+  pointer-events: none;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* Menu panels (vendor / mission / deploy) */
+#menuRoot {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 50% 40%, rgba(14, 30, 44, 0.55), rgba(6, 10, 14, 0.9));
+  backdrop-filter: blur(3px);
+}
+
+#menuRoot.hidden {
+  display: none;
+}
+
+.menuPanel {
+  width: min(620px, 92vw);
+  max-height: 84vh;
+  overflow: auto;
+  background: linear-gradient(180deg, rgba(20, 30, 40, 0.98), rgba(12, 18, 24, 0.98));
+  border: 1px solid rgba(127, 209, 255, 0.35);
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  padding: 22px 24px;
+}
+
+.menuHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 1px solid rgba(127, 209, 255, 0.18);
+  padding-bottom: 14px;
+  margin-bottom: 14px;
+}
+
+.menuHead h2 {
+  font-size: 24px;
+  color: #7fd1ff;
+  letter-spacing: 2px;
+}
+
+.menuHead p {
+  margin-top: 4px;
+  font-size: 13px;
+  opacity: 0.6;
+}
+
+.credits {
+  font-size: 13px;
+  opacity: 0.8;
+}
+
+.credits b {
+  color: #ffd23f;
+  font-size: 16px;
+}
+
+.listRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.listRow.tall {
+  align-items: flex-start;
+}
+
+.rowText {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+
+.rowName {
+  flex: 1;
+  font-size: 16px;
+  color: #e8eef4;
+}
+
+.rowDesc {
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+.rowReward {
+  font-size: 12px;
+  color: #8effb0;
+  opacity: 0.85;
+}
+
+.rowMeta {
+  color: #ffd23f;
+  font-size: 14px;
+  min-width: 70px;
+  text-align: right;
+}
+
+.diff {
+  font-style: normal;
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 6px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+.diff-普通 { background: rgba(120, 220, 140, 0.22); color: #8effb0; }
+.diff-危险 { background: rgba(255, 200, 80, 0.22); color: #ffd23f; }
+.diff-高危 { background: rgba(255, 90, 90, 0.22); color: #ff8a8a; }
+
+.rowBtn {
+  padding: 7px 18px;
+  font-size: 13px;
+  color: #06121c;
+  background: linear-gradient(180deg, #8fe0ff, #3fa8e0);
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.rowBtn.deploy {
+  background: linear-gradient(180deg, #ffd76a, #e0a93f);
+}
+
+.rowBtn:disabled {
+  filter: grayscale(0.7);
+  cursor: default;
+  opacity: 0.7;
+}
+
+.menuClose {
+  margin-top: 18px;
+  width: 100%;
+  padding: 11px;
+  font-size: 14px;
+  letter-spacing: 1px;
+  color: #cfe6ff;
+  background: rgba(127, 209, 255, 0.12);
+  border: 1px solid rgba(127, 209, 255, 0.3);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.menuClose:hover {
+  background: rgba(127, 209, 255, 0.2);
+}
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translate(-50%, 20px);
+  z-index: 30;
+  padding: 10px 22px;
+  background: rgba(8, 14, 20, 0.92);
+  border: 1px solid rgba(127, 209, 255, 0.4);
+  border-radius: 8px;
+  color: #e8eef4;
+  font-size: 14px;
+  opacity: 0;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  pointer-events: none;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+/* Cinematic vignette overlay */
+#vignette {
+  position: fixed;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  box-shadow: inset 0 0 200px 30px rgba(0, 0, 0, 0.5);
+  background: radial-gradient(circle at 50% 50%, transparent 58%, rgba(4, 8, 12, 0.32) 100%);
+}
+
+/* 2D first-person view-model (hands + weapon image) */
+#viewmodel {
+  position: fixed;
+  left: 50%;
+  bottom: -40px;
+  transform: translateX(-50%);
+  width: min(900px, 92vw);
+  z-index: 5;
+  pointer-events: none;
+}
+#vmWrap {
+  position: relative;
+  width: 100%;
+  transform-origin: 50% 100%;
+  transition: transform 0.05s linear;
+  filter: drop-shadow(0 -6px 18px rgba(0, 0, 0, 0.45));
+}
+.vmCanvas {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+#vmFlash {
+  position: fixed;
+  left: 50%;
+  top: 52%;
+  width: 180px;
+  height: 180px;
+  transform: translate(-50%, -50%) scale(0.4);
+  background: radial-gradient(circle, rgba(255, 235, 150, 0.95) 0%, rgba(255, 180, 70, 0.5) 35%, transparent 70%);
+  z-index: 6;
+  pointer-events: none;
+  opacity: 0;
+}
+#vmFlash.show {
+  animation: vmflash 0.09s ease-out;
+}
+@keyframes vmflash {
+  0% { opacity: 1; transform: translate(-50%, -50%) scale(0.3); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+}
