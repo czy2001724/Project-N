@@ -1,16 +1,6 @@
 import * as THREE from "three";
-import { buildRifle, buildPistol, buildKnife, makeFlash, buildArm } from "./models.js?v=DEV";
+import { buildRifle, buildPistol, buildKnife, makeFlash } from "./models.js?v=DEV";
 import { loadAK } from "./akmodel.js?v=DEV";
-import { toonify } from "./toonify.js?v=DEV";
-
-const V = (x, y, z) => new THREE.Vector3(x, y, z);
-// Where our own rigged arms grip the gold AK (camera space) and where their
-// shoulders anchor (lower-left / lower-right corners, so the arms spread to
-// both sides instead of bunching in the centre). Tune after a screenshot.
-const AK_ARMS = {
-  right: { hand: V(0.17, -0.24, -0.31), rot: [-0.7, 0.0, 0.1], shoulder: V(0.34, -0.6, 0.06), side: 1 },
-  left: { hand: V(0.17, -0.17, -0.55), rot: [-1.3, 0.12, 0.0], shoulder: V(-0.22, -0.58, 0.04), side: -1 },
-};
 
 // 3D first-person view-model. Each weapon is a real mesh gripped by rigged arms
 // (see models.js), parented under the camera. A `poseGroup` applies the live
@@ -58,20 +48,14 @@ export function createViewmodel(camera) {
     currentId = id;
   }
 
-  // Swap the procedural rifle for the real gold AK (gun mesh only) once it
-  // loads, gripped by our own rigged arms anchored to the lower corners.
+  // Swap the procedural rifle for the real gold AK (with its own CS arms/hands)
+  // once it loads.
   loadAK(
     (holder, muzzle) => {
       const flash = makeFlash(muzzle);
       const akGroup = new THREE.Group();
       akGroup.add(holder);
       akGroup.add(flash);
-      const arms = new THREE.Group();
-      arms.add(buildArm(AK_ARMS.right.hand, AK_ARMS.right.rot, AK_ARMS.right.shoulder, AK_ARMS.right.side));
-      arms.add(buildArm(AK_ARMS.left.hand, AK_ARMS.left.rot, AK_ARMS.left.shoulder, AK_ARMS.left.side));
-      toonify(arms, { outlineMaxRadius: 5, outlineScale: 1.045 }); // match the world's cel look
-      akGroup.add(arms);
-
       poseGroup.remove(built.rifle.group);
       poseGroup.add(akGroup);
       built.rifle = { group: akGroup, muzzle, flash };
