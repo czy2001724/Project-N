@@ -26,6 +26,13 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.08, 200);
 scene.add(camera);
 
+// separate view-model scene/camera (rendered on top with cleared depth)
+const viewScene = new THREE.Scene();
+const viewCamera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.01, 10);
+viewScene.add(viewCamera);
+viewScene.add(new THREE.HemisphereLight(0xcfe6ff, 0x35506a, 1.1));
+const vmKey = new THREE.DirectionalLight(0xfff4e0, 2.0); vmKey.position.set(0.4, 1, 0.8); viewScene.add(vmKey);
+
 const arena = createArena(scene);
 const player = createPlayer(camera, arena);
 
@@ -64,7 +71,7 @@ function showKill() {
 
 const weapons = createWeapons(camera, scene, arena, player, {
   onHitmarker(killed) { hitmarker.classList.remove("show"); void hitmarker.offsetWidth; hitmarker.classList.add("show"); if (killed) showKill(); },
-});
+}, viewCamera);
 
 // --- boot logo: show until the gun model is ready (or a short minimum) ---
 const bootLogo = document.getElementById("bootLogo");
@@ -199,6 +206,7 @@ document.addEventListener("pointerlockchange", onLockChange);
 window.addEventListener("blur", () => { localFiring = false; player.keys.clear(); weapons.triggerUp(); });
 window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
+  viewCamera.aspect = camera.aspect; viewCamera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight); composer.setSize(window.innerWidth, window.innerHeight);
 });
 
@@ -230,6 +238,7 @@ function animate(now) {
     if (sendAcc >= 0.05) { sendAcc = 0; net.send({ t: "s", x: player.state.pos.x, y: player.state.pos.y, z: player.state.pos.z, ry: player.state.yaw, rx: player.state.pitch, f: localFiring, hp: player.state.health }); }
   }
   composer.render();
+  renderer.autoClear = false; renderer.clearDepth(); renderer.render(viewScene, viewCamera); renderer.autoClear = true;
   updateHUD();
   fpsFrames += 1;
   if (now - fpsLast >= 500) { fpsEl.textContent = `${Math.round((fpsFrames * 1000) / (now - fpsLast))} FPS`; fpsFrames = 0; fpsLast = now; }

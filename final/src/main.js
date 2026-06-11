@@ -16,7 +16,7 @@ import { audio } from "./audio.js?v=DEV";
 // Human-readable build version: YYMMDD + 3-digit deploy count for that day
 // (e.g. 260611001 = 2026-06-11, 1st deploy). Bumped by hand each deploy so a
 // refresh visibly confirms whether the new build is live.
-const BUILD_VERSION = "260611031";
+const BUILD_VERSION = "260611032";
 (() => {
   const el = document.getElementById("buildVer");
   if (el) el.textContent = `v${BUILD_VERSION}`;
@@ -34,7 +34,17 @@ document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.08, 200);
-scene.add(camera); // camera holds the weapon view-model
+scene.add(camera);
+
+// Separate scene/camera for the first-person view-model, rendered on top of the
+// world with a cleared depth buffer so the weapon never clips into floors/walls.
+const viewScene = new THREE.Scene();
+const viewCamera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.01, 10);
+viewScene.add(viewCamera);
+viewScene.add(new THREE.HemisphereLight(0xcfe6ff, 0x35506a, 1.1));
+const vmKey = new THREE.DirectionalLight(0xfff4e0, 2.0);
+vmKey.position.set(0.4, 1, 0.8);
+viewScene.add(vmKey);
 
 const world = createWorld(scene, {
   // Walking over a loot orb in Area 1 picks it up into the account inventory.
@@ -100,7 +110,7 @@ const weapons = createWeapons(camera, scene, world, player, {
     hitmarker.classList.add("show");
     if (killed) showKill();
   },
-});
+}, viewCamera);
 
 const ui = createUI({
   onResume: () => requestLock(),
@@ -268,6 +278,8 @@ window.addEventListener("blur", () => {
 window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
+  viewCamera.aspect = camera.aspect;
+  viewCamera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
   composer.setSize(window.innerWidth, window.innerHeight);
 });
@@ -299,6 +311,11 @@ function animate(now) {
   }
 
   composer.render();
+  // draw the view-model on top with a fresh depth buffer (no world clipping)
+  renderer.autoClear = false;
+  renderer.clearDepth();
+  renderer.render(viewScene, viewCamera);
+  renderer.autoClear = true;
   updateHUD();
 
   fpsFrames += 1;

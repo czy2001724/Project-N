@@ -12,10 +12,12 @@ const DEFS = [
   { id: "knife", name: "近战刀", mode: "melee", damage: 150, fireRate: 0.42, range: 2.4 },
 ];
 
-export function createWeapons(camera, scene, world, player, hooks = {}) {
+export function createWeapons(camera, scene, world, player, hooks = {}, viewCamera = camera) {
   const ray = new THREE.Raycaster();
   const screenCenter = new THREE.Vector2(0, 0);
-  const vm = createViewmodel(camera); // 3D rigged view-model (arms + weapon)
+  // The view-model lives under a dedicated camera (rendered in a separate pass
+  // with cleared depth) so it never clips into the world when you look down.
+  const vm = createViewmodel(viewCamera);
 
   // Camera-attached muzzle light: lights the scene briefly on fire.
   const muzzle = new THREE.PointLight(0xffd070, 0, 8, 2);
