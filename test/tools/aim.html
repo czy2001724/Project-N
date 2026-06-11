@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AK 持枪调节器 · Project N</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 100%; height: 100%; overflow: hidden; background: #0b1018; font-family: system-ui, sans-serif; }
+      #c { display: block; }
+      /* crosshair + vertical centre line, same as the game */
+      #cross { position: fixed; left: 50%; top: 50%; width: 18px; height: 18px; transform: translate(-50%, -50%); pointer-events: none; }
+      #cross::before, #cross::after { content: ""; position: absolute; background: #fff; }
+      #cross::before { left: 8px; top: 0; width: 2px; height: 18px; }
+      #cross::after { top: 8px; left: 0; width: 18px; height: 2px; }
+      #midline { position: fixed; left: 50%; top: 0; width: 1px; height: 100%; background: rgba(255, 0, 255, 0.5); pointer-events: none; }
+      #panel {
+        position: fixed; top: 10px; left: 10px; width: 310px;
+        background: rgba(14, 20, 30, 0.92); border: 1px solid #2a3a4f; border-radius: 10px;
+        padding: 12px 14px; color: #d8e2ee; font-size: 12px; max-height: 96vh; overflow-y: auto;
+      }
+      #panel h1 { font-size: 14px; color: #7fd1ff; margin-bottom: 8px; }
+      .row { display: flex; align-items: center; gap: 6px; margin: 5px 0; }
+      .row label { width: 52px; color: #9fb3c8; }
+      .row input[type=range] { flex: 1; }
+      .row input[type=number] { width: 64px; background: #0c141e; color: #d8e2ee; border: 1px solid #2a3a4f; border-radius: 4px; padding: 2px 4px; }
+      .grp { border-top: 1px solid #233244; margin-top: 8px; padding-top: 6px; }
+      #out { width: 100%; height: 120px; margin-top: 8px; background: #07101a; color: #8effb0; border: 1px solid #2a3a4f; border-radius: 6px; font-family: monospace; font-size: 12px; padding: 6px; resize: vertical; }
+      .btns { display: flex; gap: 6px; margin-top: 6px; }
+      button { flex: 1; background: #1d3146; color: #d8e2ee; border: 1px solid #2a4a66; border-radius: 6px; padding: 6px; cursor: pointer; font-size: 12px; }
+      button:hover { background: #294866; }
+      .hint { color: #6b7d92; margin-top: 6px; line-height: 1.5; }
+      .chk { display: flex; align-items: center; gap: 6px; margin: 6px 0; }
+    </style>
+  </head>
+  <body>
+    <canvas id="c"></canvas>
+    <div id="midline"></div>
+    <div id="cross"></div>
+
+    <div id="panel">
+      <h1>AK 持枪调节器</h1>
+      <div class="chk"><input type="checkbox" id="mirror" checked /><label for="mirror">镜像（右手 / 翻转左右）</label></div>
+
+      <div class="grp">缩放 SCALE</div>
+      <div class="row"><label>scale</label><input type="range" id="scale_r" min="0.005" max="0.08" step="0.001" /><input type="number" id="scale_n" step="0.001" /></div>
+
+      <div class="grp">旋转 ROT（弧度）</div>
+      <div class="row"><label>rotX</label><input type="range" id="rx_r" min="-3.14" max="3.14" step="0.01" /><input type="number" id="rx_n" step="0.01" /></div>
+      <div class="row"><label>rotY</label><input type="range" id="ry_r" min="-3.14" max="3.14" step="0.01" /><input type="number" id="ry_n" step="0.01" /></div>
+      <div class="row"><label>rotZ</label><input type="range" id="rz_r" min="-3.14" max="3.14" step="0.01" /><input type="number" id="rz_n" step="0.01" /></div>
+
+      <div class="grp">位置 POS（米）</div>
+      <div class="row"><label>posX</label><input type="range" id="px_r" min="-0.6" max="0.6" step="0.005" /><input type="number" id="px_n" step="0.005" /></div>
+      <div class="row"><label>posY</label><input type="range" id="py_r" min="-0.7" max="0.3" step="0.005" /><input type="number" id="py_n" step="0.005" /></div>
+      <div class="row"><label>posZ</label><input type="range" id="pz_r" min="-0.6" max="-0.1" step="0.005" /><input type="number" id="pz_n" step="0.005" /></div>
+
+      <textarea id="out" readonly></textarea>
+      <div class="btns">
+        <button id="copy">复制参数</button>
+        <button id="reset">恢复当前游戏值</button>
+      </div>
+      <div class="hint">调到满意后点「复制参数」，把内容发给我即可。画面与游戏一致（相机 FOV 72，洋红线=屏幕中线）。</div>
+    </div>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+      }
+    </script>
+    <script type="module">
+      import * as THREE from "three";
+      import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
+
+      // Defaults = current in-game values (akmodel.js v260611010)
+      const DEFAULTS = { mirror: true, scale: 0.038, rx: 0.0, ry: 0.68, rz: -0.4, px: 0.12, py: -0.42, pz: -0.27 };
+      const state = { ...DEFAULTS };
+
+      const TEX = ["view_glove.png","view_skin.png","view_finger.png","QS_AK1.png","QS_AK2.png","QS_AK3.png","QS_AK4.png","QS_AK5.png"];
+
+      const canvas = document.getElementById("c");
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+      renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x0e1622);
+      const camera = new THREE.PerspectiveCamera(72, 1, 0.08, 200); // same as the game
+      scene.add(camera);
+      scene.add(new THREE.HemisphereLight(0xcfe6ff, 0x1a2433, 0.9));
+      const dir = new THREE.DirectionalLight(0xf2f8ff, 0.8); dir.position.set(0.4, 1, 0.6); scene.add(dir);
+
+      function resize() {
+        const w = innerWidth, h = innerHeight;
+        renderer.setSize(w, h);
+        camera.aspect = w / h; camera.updateProjectionMatrix();
+      }
+      addEventListener("resize", resize); resize();
+
+      // mirror group -> holder -> root(obj), matching the game's akGroup/holder/root
+      const mirrorGroup = new THREE.Group();
+      const holder = new THREE.Group();
+      mirrorGroup.add(holder);
+      camera.add(mirrorGroup);
+      let root = null;
+
+      const texLoader = new THREE.TextureLoader().setPath("../assets/ak/");
+      const cache = {};
+      function tex(i) {
+        if (!cache[i]) { const t = texLoader.load(TEX[i]); t.colorSpace = THREE.SRGBColorSpace; cache[i] = t; }
+        return cache[i];
+      }
+      function matFor(name) {
+        const m = /tex(\d+)/.exec(name || ""); const ti = m ? parseInt(m[1], 10) : 3;
+        if (ti < 3) return new THREE.MeshToonMaterial({ color: 0xeac09a, emissive: 0x241a10, side: THREE.DoubleSide });
+        return new THREE.MeshBasicMaterial({ map: tex(ti), transparent: true, alphaTest: 0.5, side: THREE.DoubleSide });
+      }
+
+      new OBJLoader().setPath("../assets/ak/").load("v_ak47.obj", (obj) => {
+        obj.traverse((o) => {
+          if (!o.isMesh) return;
+          o.material = Array.isArray(o.material) ? o.material.map((mm) => matFor(mm.name)) : matFor(o.material.name);
+        });
+        root = obj; holder.add(root); apply();
+      });
+
+      // Apply state -> transforms (replicates akmodel.js normalisation + mirror)
+      function apply() {
+        if (!root) return;
+        root.position.set(0, 0, 0);
+        root.scale.setScalar(state.scale);
+        root.rotation.set(state.rx, state.ry, state.rz);
+        const box = new THREE.Box3().setFromObject(holder);
+        const c = box.getCenter(new THREE.Vector3());
+        root.position.x += state.px - c.x;
+        root.position.y += state.py - c.y;
+        root.position.z += state.pz - box.max.z;
+        mirrorGroup.scale.x = state.mirror ? -1 : 1;
+        updateOut();
+      }
+
+      function updateOut() {
+        const f = (v) => v.toFixed(3).replace(/\.?0+$/, "") || "0";
+        document.getElementById("out").value =
+`const SCALE = ${f(state.scale)};
+const ROT = new THREE.Euler(${f(state.rx)}, ${f(state.ry)}, ${f(state.rz)});
+const POS = new THREE.Vector3(${f(state.px)}, ${f(state.py)}, ${f(state.pz)});
+// 镜像 mirror: ${state.mirror}`;
+      }
+
+      // Wire up sliders + number inputs
+      const pairs = [
+        ["scale", "scale_r", "scale_n"], ["rx", "rx_r", "rx_n"], ["ry", "ry_r", "ry_n"], ["rz", "rz_r", "rz_n"],
+        ["px", "px_r", "px_n"], ["py", "py_r", "py_n"], ["pz", "pz_r", "pz_n"],
+      ];
+      function syncInputs() {
+        for (const [k, r, n] of pairs) { document.getElementById(r).value = state[k]; document.getElementById(n).value = state[k]; }
+        document.getElementById("mirror").checked = state.mirror;
+      }
+      for (const [k, r, n] of pairs) {
+        const rr = document.getElementById(r), nn = document.getElementById(n);
+        const set = (v) => { state[k] = parseFloat(v); rr.value = v; nn.value = v; apply(); };
+        rr.addEventListener("input", (e) => set(e.target.value));
+        nn.addEventListener("input", (e) => set(e.target.value));
+      }
+      document.getElementById("mirror").addEventListener("change", (e) => { state.mirror = e.target.checked; apply(); });
+      document.getElementById("copy").addEventListener("click", () => {
+        navigator.clipboard.writeText(document.getElementById("out").value);
+        const b = document.getElementById("copy"); b.textContent = "已复制 ✓"; setTimeout(() => (b.textContent = "复制参数"), 1200);
+      });
+      document.getElementById("reset").addEventListener("click", () => { Object.assign(state, DEFAULTS); syncInputs(); apply(); });
+
+      syncInputs();
+      renderer.setAnimationLoop(() => renderer.render(scene, camera));
+    </script>
+  </body>
+</html>
