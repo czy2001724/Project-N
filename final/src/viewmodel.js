@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { buildRifle, buildPistol, buildKnife, makeFlash } from "./models.js?v=DEV";
-import { loadAK } from "./akmodel.js?v=DEV";
+import { loadAK, loadArms } from "./akmodel.js?v=DEV";
 
 // 3D first-person view-model. Each weapon is a real mesh gripped by rigged arms
 // (see models.js), parented under the camera. A `poseGroup` applies the live
@@ -34,6 +34,19 @@ export function createViewmodel(camera) {
     poseGroup.add(b.group);
     built[id] = b;
   }
+
+  // Attach the CS arms (same hands as the AK) to the melee knife instead of a
+  // procedural hand. Tunable via window.__PN_KNIFE_ARM__ / tools/knife.html.
+  const KA = (typeof window !== "undefined" && window.__PN_KNIFE_ARM__) || { s: 0.03, px: 0, py: -0.1, pz: 0.1, rx: 0, ry: 0, rz: 0 };
+  loadArms((arms) => {
+    arms.scale.setScalar(KA.s);
+    arms.position.set(KA.px, KA.py, KA.pz);
+    arms.rotation.set(KA.rx, KA.ry, KA.rz);
+    built.knife.blade.add(arms); // assembly space (where the dagger handle sits)
+    if (typeof window !== "undefined") {
+      window.__PN_SET_KNIFE_ARM__ = (s, px, py, pz, rx, ry, rz) => { arms.scale.setScalar(s); arms.position.set(px, py, pz); arms.rotation.set(rx, ry, rz); };
+    }
+  });
 
   let currentId = null;
   let flashT = 0;

@@ -243,19 +243,10 @@ export function buildKnife() {
   blade.add(box(0.03, 0.1, 0.012, gold(), 0, 0.06, 0.004)); // ornate ricasso etching
   assembly.add(blade);
 
-  // single right hand wrapping the vertical grip
-  const handLocal = V(0, -0.08, 0.02);
-  const h = handAt(handLocal, [-1.45, 0.15, 0.1]);
-  assembly.add(h);
-
   // tilt the whole knife to point up-right across the lower-right of the screen
   assembly.rotation.set(-0.32, 0.18, -0.62);
   assembly.position.set(0.05, -0.16, -0.04);
-
-  // forearm in group space, from the shoulder to the hand's tilted position
-  assembly.updateMatrix();
-  const wrist = handLocal.clone().applyMatrix4(assembly.matrix).add(V(0.02, -0.06, 0.06));
-  g.add(armBones(wrist, SH_R, 1, null));
+  // (no procedural hand — the CS arms from the AK model are attached in viewmodel.js)
 
   return { group: g, muzzle: V(0, 0, -1.0), blade: assembly };
 }

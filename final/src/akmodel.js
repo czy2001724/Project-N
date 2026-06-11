@@ -105,3 +105,16 @@ export function loadAK(onReady, onError) {
     loadOne("v_ak47_arms.obj", EMB && EMB.arms, (armRoot) => build(gunRoot, armRoot));
   });
 }
+
+// Loads just the CS arms (clean skin) — reused by the melee knife so it's held
+// by the same hands as the AK.
+export function loadArms(onReady, onError) {
+  const EMB = (typeof window !== "undefined") ? window.__PN_AK_ASSETS__ : null;
+  const armMat = () => new THREE.MeshStandardMaterial({ color: 0xd9a578, roughness: 0.75, metalness: 0.0, side: THREE.DoubleSide });
+  function finish(root) {
+    root.traverse((o) => { if (o.isMesh) { o.material = armMat(); o.raycast = () => {}; o.frustumCulled = false; } });
+    onReady(root);
+  }
+  if (EMB) { try { finish(new OBJLoader().parse(EMB.arms)); } catch (e) { if (onError) onError(e); } }
+  else new OBJLoader().setPath("assets/ak/").load("v_ak47_arms.obj", finish, undefined, onError);
+}
