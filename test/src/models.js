@@ -99,6 +99,9 @@ function armBones(wrist, shoulder, side, cuffRot) {
 }
 
 // A full arm: hand at `handPos/handRot`, connected back to `shoulder`.
+export function buildArm(handPos, handRot, shoulder, side) {
+  return arm(handPos, handRot, shoulder, side);
+}
 function arm(handPos, handRot, shoulder, side) {
   const g = new THREE.Group();
   const h = handAt(handPos, handRot);
