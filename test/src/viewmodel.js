@@ -29,6 +29,7 @@ export function createViewmodel(camera) {
     b.group.position.copy(base.pos);
     b.group.rotation.copy(base.rot);
     b.group.visible = false;
+    b.group.traverse((o) => { o.frustumCulled = false; }); // camera-attached: never cull
     poseGroup.add(b.group);
     built[id] = b;
   }
@@ -57,6 +58,7 @@ export function createViewmodel(camera) {
       akGroup.scale.x = -1; // mirror to a right-handed hold (gun on the right)
       akGroup.add(holder);
       akGroup.add(flash);
+      akGroup.traverse((o) => { o.frustumCulled = false; }); // never cull the view-model
       poseGroup.remove(built.rifle.group);
       poseGroup.add(akGroup);
       built.rifle = { group: akGroup, muzzle, flash };
