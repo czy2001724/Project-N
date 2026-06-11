@@ -18,11 +18,12 @@ const TEX = [
 // --- tunables (adjust after a playtest screenshot) ---
 // The OBJ is baked in the idle pose, which already points the barrel down -Z,
 // so no extra rotation is needed.
-const SCALE = 0.021; // GoldSrc units (~inches) -> metres
-const ROT = new THREE.Euler(0.0, 0.0, 0.0);
-// More central + a little lower, so both CS forearms come up from the
-// centre-bottom and read on the left/right of the crosshair (CS framing).
-const POS = new THREE.Vector3(0.05, -0.22, -0.3);
+// Tuned with an offline previewer that mirrors the in-game camera, so the AK
+// reads as a classic CS hold (angled into the screen, both CS forearms on the
+// left/right) instead of a head-on "looking down the stock" view.
+const SCALE = 0.019; // GoldSrc units (~inches) -> metres
+const ROT = new THREE.Euler(-0.08, -0.72, 0.06);
+const POS = new THREE.Vector3(0.12, -0.19, -0.36);
 
 export function loadAK(onReady, onError) {
   const texLoader = new THREE.TextureLoader().setPath("assets/ak/");
