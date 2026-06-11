@@ -10,12 +10,13 @@ import { createWeapons } from "./weapons.js?v=DEV";
 import { createUI } from "./ui.js?v=DEV";
 import { toonify } from "./toonify.js?v=DEV";
 
-// Show the build version (the cache-bust hash baked into this module's URL) in
-// the HUD, so a refresh visibly confirms whether the new build is live.
+// Human-readable build version: YYMMDD + 3-digit deploy count for that day
+// (e.g. 260611001 = 2026-06-11, 1st deploy). Bumped by hand each deploy so a
+// refresh visibly confirms whether the new build is live.
+const BUILD_VERSION = "260611001";
 (() => {
-  const v = new URLSearchParams(import.meta.url.split("?")[1] || "").get("v") || "DEV";
   const el = document.getElementById("buildVer");
-  if (el) el.textContent = `build ${v}`;
+  if (el) el.textContent = `v${BUILD_VERSION}`;
 })();
 
 // --- Renderer / scene / camera ------------------------------------------
