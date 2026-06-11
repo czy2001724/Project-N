@@ -6,7 +6,7 @@ import * as THREE from "three";
 
 const metal = () => new THREE.MeshStandardMaterial({ color: 0x23272e, roughness: 0.42, metalness: 0.75 });
 const polymer = () => new THREE.MeshStandardMaterial({ color: 0x2b2f36, roughness: 0.75, metalness: 0.15 });
-const accent = () => new THREE.MeshStandardMaterial({ color: 0x8fe3ff, emissive: 0x39b6ff, emissiveIntensity: 1.8, roughness: 0.35 });
+const accent = () => new THREE.MeshStandardMaterial({ color: 0x6fd0ff, emissive: 0x2a90c0, emissiveIntensity: 0.9, roughness: 0.4 });
 const steel = () => new THREE.MeshStandardMaterial({ color: 0xc8d2dc, roughness: 0.25, metalness: 0.9 });
 
 function box(w, h, d, mat, x = 0, y = 0, z = 0) {
