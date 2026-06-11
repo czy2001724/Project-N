@@ -319,6 +319,18 @@ export function createWorld(scene, hooks = {}) {
     scene.add(torus(0.56, 0.05, m, x, 0.45, z).rotateX(Math.PI / 2));
   }
 
+  // AMMO stations — walk up and press E to resupply.
+  function ammoStation(x, z) {
+    add(boxMesh(1.0, 0.7, 0.7, hazardMat, x, 0.35, z), true);
+    scene.add(boxMesh(1.04, 0.1, 0.74, orange, x, 0.72, z));
+    const lbl = makeLabel("弹药补给 [E]", "#ffd23f");
+    lbl.position.set(x, 1.4, z);
+    scene.add(lbl);
+    interactables.push({ name: "弹药补给", action: "ammo", pos: new THREE.Vector3(x, 0, z), radius: 2.2 });
+  }
+  ammoStation(-13, 5);
+  ammoStation(13, 5);
+
   // ---------------------------------------------------------------------
   // TRAINING RANGE (behind spawn).
   const TARGET_HP = 30;

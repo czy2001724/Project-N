@@ -68,12 +68,21 @@ export function createArena(scene) {
   const m1 = new THREE.Mesh(new THREE.RingGeometry(1.0, 1.3, 36), cyan); m1.rotation.x = -Math.PI / 2; m1.position.set(0, 0.04, -15); scene.add(m1);
   const m2 = new THREE.Mesh(new THREE.RingGeometry(1.0, 1.3, 36), orange); m2.rotation.x = -Math.PI / 2; m2.position.set(0, 0.04, 15); scene.add(m2);
 
+  // ammo stations (press E to resupply) at the four corners
+  const interactables = [];
+  function ammoStation(x, z) {
+    add(box(1.0, 0.7, 0.7, crateMat, x, 0.35, z), true);
+    scene.add(box(1.04, 0.1, 0.74, orange, x, 0.72, z));
+    interactables.push({ name: "弹药补给", action: "ammo", pos: new THREE.Vector3(x, 0, z), radius: 2.2 });
+  }
+  ammoStation(-14, -14); ammoStation(14, 14); ammoStation(14, -14); ammoStation(-14, 14);
+
   const state = { time: 0 };
   function getHittables() { return solids.concat(extra); }
   function addHittable(m) { extra.push(m); }
   function update(dt) { state.time += dt; }
 
-  return { ROOM, colliders, solids, state, spawns, getHittables, addHittable, update };
+  return { ROOM, colliders, solids, state, spawns, interactables, getHittables, addHittable, update };
 }
 
 // A simple opponent avatar (soldier holding a rifle) + a name tag.

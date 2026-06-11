@@ -11,11 +11,12 @@ import { createUI } from "./ui.js?v=DEV";
 import "./shell.js?v=DEV"; // boot logo + login + lobby + backpack (front-end shell)
 import { account } from "./account.js?v=DEV";
 import { renderInventory, ITEM_DB } from "./inventory.js?v=DEV";
+import { audio } from "./audio.js?v=DEV";
 
 // Human-readable build version: YYMMDD + 3-digit deploy count for that day
 // (e.g. 260611001 = 2026-06-11, 1st deploy). Bumped by hand each deploy so a
 // refresh visibly confirms whether the new build is live.
-const BUILD_VERSION = "260611024";
+const BUILD_VERSION = "260611025";
 (() => {
   const el = document.getElementById("buildVer");
   if (el) el.textContent = `v${BUILD_VERSION}`;
@@ -83,12 +84,21 @@ function closeChar(resume = true) {
 }
 document.getElementById("charClose").addEventListener("click", () => closeChar(true));
 
+const killBanner = document.getElementById("killBanner");
+function showKill() {
+  audio.kill();
+  killBanner.classList.remove("show");
+  void killBanner.offsetWidth;
+  killBanner.classList.add("show");
+}
+
 const weapons = createWeapons(camera, scene, world, player, {
-  onHitmarker() {
+  onHitmarker(killed) {
     // retrigger the CSS flash animation
     hitmarker.classList.remove("show");
     void hitmarker.offsetWidth;
     hitmarker.classList.add("show");
+    if (killed) showKill();
   },
 });
 
@@ -115,6 +125,12 @@ function interact() {
     player.state.pos.copy(world.baseSpawn);
     player.state.vy = 0;
     ui.toast("已撤离回基地");
+    return;
+  }
+  if (activeInteractable.action === "ammo") {
+    weapons.resupply();
+    audio.reload();
+    ui.toast("弹药已补充");
     return;
   }
   ui.openAction(activeInteractable.action);
@@ -188,6 +204,7 @@ function onMouseUp(e) {
 }
 
 function requestLock() {
+  audio.resume(); // unlock audio within the click gesture
   renderer.domElement.requestPointerLock?.();
 }
 

@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { createViewmodel } from "./viewmodel.js?v=DEV";
+import { audio } from "./audio.js?v=DEV";
 
 // Weapon definitions. mode drives trigger behaviour:
 //   auto  -> fires continuously while held
@@ -78,6 +79,7 @@ export function createWeapons(camera, scene, world, player, hooks = {}) {
     if (w.ammo === w.def.mag || w.reserve === 0) return;
     w.reloading = true;
     w.reloadStart = performance.now() / 1000;
+    audio.reload();
     setTimeout(() => {
       const need = w.def.mag - w.ammo;
       const take = Math.min(need, w.reserve);
@@ -96,10 +98,13 @@ export function createWeapons(camera, scene, world, player, hooks = {}) {
     }
     w.lastShot = time;
     w.ammo -= 1;
-    w.recoil = Math.min(w.recoil + w.def.recoil, 0.16);
-    player.addPitch(w.def.kick);
+    // a touch more recoil standing; much less when crouched
+    const rm = player.state && player.state.crouching ? 0.4 : 1.2;
+    w.recoil = Math.min(w.recoil + w.def.recoil * rm, 0.18);
+    player.addPitch(w.def.kick * rm);
     muzzle.intensity = 4.5;
     vm.flash();
+    audio.shot(w.def.id);
     damageAt(w.def.range, w.def.damage);
   }
 
@@ -108,7 +113,17 @@ export function createWeapons(camera, scene, world, player, hooks = {}) {
     if (time - w.lastShot < w.def.fireRate) return;
     w.lastShot = time;
     w.swing = 1;
+    audio.shot("knife");
     damageAt(w.def.range, w.def.damage);
+  }
+
+  // refill all ranged weapons to full reserve + mag (ammo stations).
+  function resupply() {
+    for (const w of weapons) {
+      if (w.def.mode === "melee") continue;
+      w.reserve = w.def.reserve;
+      w.ammo = w.def.mag;
+    }
   }
 
   function triggerDown(time) {
@@ -229,5 +244,5 @@ export function createWeapons(camera, scene, world, player, hooks = {}) {
     };
   }
 
-  return { triggerDown, triggerUp, select, reload, update, getHUD };
+  return { triggerDown, triggerUp, select, reload, resupply, update, getHUD };
 }

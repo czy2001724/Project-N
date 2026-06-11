@@ -658,3 +658,28 @@ canvas {
   background: #0b141e; color: #cfe2f2; border: 1px solid #2a4358; border-radius: 8px; padding: 8px;
 }
 .net-msg { margin-top: 12px; font-size: 13px; color: #8effb0; min-height: 18px; }
+
+/* kill banner */
+#killBanner {
+  position: fixed; top: 38%; left: 50%; transform: translate(-50%, -50%) scale(0.6);
+  z-index: 7; pointer-events: none; opacity: 0; display: flex; align-items: center; gap: 12px;
+  padding: 10px 26px; border-radius: 10px;
+  background: linear-gradient(180deg, rgba(220, 40, 50, 0.92), rgba(150, 20, 30, 0.92));
+  border: 1px solid rgba(255, 180, 180, 0.6); box-shadow: 0 6px 30px rgba(255, 40, 60, 0.5);
+}
+#killBanner .kb-icon { font-size: 30px; }
+#killBanner .kb-text { font-size: 26px; font-weight: 800; letter-spacing: 6px; color: #fff; text-shadow: 0 2px 6px rgba(0,0,0,0.6); }
+#killBanner.show { animation: killpop 1.1s cubic-bezier(0.2, 0.9, 0.3, 1) forwards; }
+@keyframes killpop {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+  12% { opacity: 1; transform: translate(-50%, -50%) scale(1.12); }
+  24% { transform: translate(-50%, -50%) scale(1.0); }
+  75% { opacity: 1; transform: translate(-50%, -50%) scale(1.0); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.0); }
+}
+/* room code */
+.room-code {
+  font-size: 38px; font-weight: 800; letter-spacing: 10px; text-align: center;
+  color: #8effb0; background: #07101a; border: 1px solid #2a4358; border-radius: 10px;
+  padding: 14px; margin: 6px 0; font-family: monospace;
+}
