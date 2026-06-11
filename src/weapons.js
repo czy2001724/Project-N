@@ -45,6 +45,7 @@ export function createWeapons(camera, scene, world, player, hooks = {}) {
       def,
       group,
       flash,
+      blade: built.blade || null, // katana blade (drawn on attack)
       restPos: group.position.clone(),
       ammo: def.mag ?? 0,
       reserve: def.reserve ?? 0,
@@ -55,6 +56,9 @@ export function createWeapons(camera, scene, world, player, hooks = {}) {
       swing: 0, // melee animation progress
     };
   });
+
+  // Katana blade starts sheathed (hidden).
+  for (const w of weapons) if (w.blade) { w.blade.visible = false; w.blade.scale.z = 0.01; }
 
   let current = weapons[0];
   current.group.visible = true;
@@ -189,6 +193,7 @@ export function createWeapons(camera, scene, world, player, hooks = {}) {
     let py = w.restPos.y;
     let pz = w.restPos.z;
     let rx = 0;
+    let ry = 0;
     let rz = 0;
 
     py -= equipT * 0.4; // lowered during switch
@@ -199,19 +204,27 @@ export function createWeapons(camera, scene, world, player, hooks = {}) {
     rz += reloadDip * 0.35;
 
     if (w.def.mode === "melee") {
-      const s = Math.sin(w.swing * Math.PI);
-      px -= s * 0.12;
-      py += s * 0.06;
-      pz += s * 0.05;
-      rx += -s * 1.1;
-      rz += s * 0.5;
+      const s = Math.sin(w.swing * Math.PI); // 0..1..0
+      // draw-slash: thrust forward + big horizontal sweep
+      px += -0.28 * s;
+      py += 0.08 * s;
+      pz += -0.16 * s;
+      ry += -1.5 * s; // horizontal katana sweep
+      rx += 0.25 * s;
+      rz += 0.45 * s;
+      // "draw the blade" out of the handle while attacking
+      if (w.blade) {
+        const out = w.swing > 0.02;
+        w.blade.visible = out;
+        w.blade.scale.z = out ? Math.min(1, (1 - w.swing) * 2.2 + 0.15) : 0.01;
+      }
     } else {
       pz += w.recoil;
       rx += w.recoil * 1.5;
     }
 
     w.group.position.set(px, py, pz);
-    w.group.rotation.set(rx, 0, rz);
+    w.group.rotation.set(rx, ry, rz);
 
     // fade impact sparks
     for (let i = impacts.length - 1; i >= 0; i -= 1) {
