@@ -140,6 +140,12 @@ const inputState = { locked: false };
 let localFiring = false;
 let activeInteractable = null;
 function requestLock() { audio.resume(); renderer.domElement.requestPointerLock?.(); }
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    const p = document.documentElement.requestFullscreen?.();
+    (p || Promise.resolve()).then(() => { try { navigator.keyboard?.lock?.(); } catch (_) {} }).catch(() => {});
+  } else { try { navigator.keyboard?.unlock?.(); } catch (_) {} document.exitFullscreen?.(); }
+}
 function showPause() { overlay.classList.remove("hidden"); crosshair.style.display = "none"; player.keys.clear(); }
 
 function interact() {
@@ -159,8 +165,9 @@ function updateInteraction() {
 }
 
 function onKeyDown(e) {
+  if (e.code === "F8") { e.preventDefault(); toggleFullscreen(); return; }
   if (!netPanel.classList.contains("hidden")) { if (e.code === "Escape") closeNet(); return; }
-  if (["KeyW", "KeyA", "KeyS", "KeyD", "Space", "ShiftLeft", "KeyC"].includes(e.code)) e.preventDefault();
+  if (["KeyW", "KeyA", "KeyS", "KeyD", "Space", "ShiftLeft", "ControlLeft"].includes(e.code)) e.preventDefault();
   if (e.code === "Escape") { document.exitPointerLock?.(); return; }
   player.keys.add(e.code);
   if (e.code === "Space" && !e.repeat) player.queueJump();

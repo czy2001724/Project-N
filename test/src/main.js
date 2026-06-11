@@ -16,7 +16,7 @@ import { audio } from "./audio.js?v=DEV";
 // Human-readable build version: YYMMDD + 3-digit deploy count for that day
 // (e.g. 260611001 = 2026-06-11, 1st deploy). Bumped by hand each deploy so a
 // refresh visibly confirms whether the new build is live.
-const BUILD_VERSION = "260611029";
+const BUILD_VERSION = "260611030";
 (() => {
   const el = document.getElementById("buildVer");
   if (el) el.textContent = `v${BUILD_VERSION}`;
@@ -158,6 +158,7 @@ function updateInteraction() {
 }
 
 function onKeyDown(e) {
+  if (e.code === "F8") { e.preventDefault(); toggleFullscreen(); return; }
   // Backpack/attributes panel: B resumes the game, Esc goes to the pause overlay.
   if (!charPanel.classList.contains("hidden")) {
     if (e.code === "KeyB") closeChar(true);
@@ -173,7 +174,7 @@ function onKeyDown(e) {
     return;
   }
   if (e.code === "KeyB" && inputState.locked) { openChar(); return; }
-  if (["KeyW", "KeyA", "KeyS", "KeyD", "Space", "ShiftLeft", "KeyC"].includes(e.code)) {
+  if (["KeyW", "KeyA", "KeyS", "KeyD", "Space", "ShiftLeft", "ControlLeft"].includes(e.code)) {
     e.preventDefault();
   }
   player.keys.add(e.code);
@@ -206,6 +207,18 @@ function onMouseUp(e) {
 function requestLock() {
   audio.resume(); // unlock audio within the click gesture
   renderer.domElement.requestPointerLock?.();
+}
+
+// F8 toggles fullscreen. In fullscreen we also take a Keyboard Lock so the page
+// captures Ctrl+W etc. (otherwise crouch+forward closes the browser tab).
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    const p = document.documentElement.requestFullscreen?.();
+    (p || Promise.resolve()).then(() => { try { navigator.keyboard?.lock?.(); } catch (_) {} }).catch(() => {});
+  } else {
+    try { navigator.keyboard?.unlock?.(); } catch (_) {}
+    document.exitFullscreen?.();
+  }
 }
 
 // Browsers block requestPointerLock when it's triggered by the Esc key (Esc is
