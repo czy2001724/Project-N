@@ -160,7 +160,7 @@ function updateInteraction() {
 
 function onKeyDown(e) {
   if (!netPanel.classList.contains("hidden")) { if (e.code === "Escape") closeNet(); return; }
-  if (["KeyW", "KeyA", "KeyS", "KeyD", "Space", "ShiftLeft", "ControlLeft"].includes(e.code)) e.preventDefault();
+  if (["KeyW", "KeyA", "KeyS", "KeyD", "Space", "ShiftLeft", "KeyC"].includes(e.code)) e.preventDefault();
   if (e.code === "Escape") { document.exitPointerLock?.(); return; }
   player.keys.add(e.code);
   if (e.code === "Space" && !e.repeat) player.queueJump();

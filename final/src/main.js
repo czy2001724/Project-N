@@ -16,7 +16,7 @@ import { audio } from "./audio.js?v=DEV";
 // Human-readable build version: YYMMDD + 3-digit deploy count for that day
 // (e.g. 260611001 = 2026-06-11, 1st deploy). Bumped by hand each deploy so a
 // refresh visibly confirms whether the new build is live.
-const BUILD_VERSION = "260611028";
+const BUILD_VERSION = "260611029";
 (() => {
   const el = document.getElementById("buildVer");
   if (el) el.textContent = `v${BUILD_VERSION}`;
@@ -173,7 +173,7 @@ function onKeyDown(e) {
     return;
   }
   if (e.code === "KeyB" && inputState.locked) { openChar(); return; }
-  if (["KeyW", "KeyA", "KeyS", "KeyD", "Space", "ShiftLeft", "ControlLeft"].includes(e.code)) {
+  if (["KeyW", "KeyA", "KeyS", "KeyD", "Space", "ShiftLeft", "KeyC"].includes(e.code)) {
     e.preventDefault();
   }
   player.keys.add(e.code);

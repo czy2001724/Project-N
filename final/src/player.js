@@ -94,7 +94,9 @@ export function createPlayer(camera, world) {
   }
 
   function update(dt) {
-    state.crouching = keys.has("ControlLeft") || keys.has("ControlRight");
+    // Crouch is bound to C (not Ctrl): the browser reserves Ctrl+W to close the
+    // tab and won't let a page block it.
+    state.crouching = keys.has("KeyC");
     const moving =
       keys.has("KeyW") || keys.has("KeyA") || keys.has("KeyS") || keys.has("KeyD");
     state.moving = moving;
