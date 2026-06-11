@@ -18,7 +18,7 @@ export function createWorld(scene, hooks = {}) {
   const key = new THREE.DirectionalLight(0xfff4e0, 2.8); // sun
   key.position.set(8, 20, 12);
   key.castShadow = true;
-  key.shadow.mapSize.set(1024, 1024);
+  key.shadow.mapSize.set(2048, 2048);
   key.shadow.camera.near = 1;
   key.shadow.camera.far = 70;
   key.shadow.camera.left = -28;

@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Project N — 联机 1v1</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div id="hud">
+      <div class="title">Project N — 联机 1v1 <span id="buildVer" class="ver">…</span> <span id="fps" class="ver"></span></div>
+      <div class="hint">WASD 移动 · 左键射击 · R 换弹 · 1/2/3 切枪 · Shift 冲刺 · Esc 暂停</div>
+    </div>
+
+    <div id="vignette" aria-hidden="true"></div>
+    <div id="crosshair" aria-hidden="true"><span></span></div>
+    <div id="hitmarker" aria-hidden="true"></div>
+
+    <div id="stats">
+      <div class="row"><span class="label">击败</span><span id="score">0</span></div>
+      <div class="row"><span class="label">武器</span><span id="weapon">步枪</span></div>
+      <div class="row"><span class="label">冲刺</span><span id="sprint">关</span></div>
+      <div class="row"><span class="label">弹药</span><span id="ammo">30 / 150</span></div>
+      <div class="row"><span class="label">生命</span><span id="health">100</span></div>
+    </div>
+
+    <div id="oppStatus" class="hidden">对手 · HP <b id="oppHp">100</b></div>
+
+    <div id="overlay">
+      <div class="panel">
+        <h1>联机 1v1</h1>
+        <p>练枪场 · 局域网/P2P 对战</p>
+        <button id="startBtn">点击开始</button>
+        <button id="openNet" class="ghost">联机对战</button>
+        <p class="sub">未联机时为单人练枪。Esc 释放鼠标</p>
+      </div>
+    </div>
+
+    <div id="netPanel" class="hidden">
+      <div class="net-card">
+        <div class="net-head"><h2>联机对战 1v1</h2><button id="netClose" class="btn-tiny">关闭 ✕</button></div>
+        <p class="net-desc">无需服务器。主机生成邀请码发给好友；好友粘贴后生成应答码发回主机；主机粘贴应答码即连接。同一局域网或公网均可。</p>
+        <div class="net-roles">
+          <button id="roleHost" class="net-role">我是主机<small>创建房间</small></button>
+          <button id="roleGuest" class="net-role">我是访客<small>加入房间</small></button>
+        </div>
+
+        <div id="hostFlow" class="hidden net-flow">
+          <label>① 你的邀请码（复制发给好友）</label>
+          <textarea id="hostOffer" readonly placeholder="生成中…"></textarea>
+          <button id="copyOffer" class="btn-ghost">复制邀请码</button>
+          <label>② 粘贴好友发回的应答码</label>
+          <textarea id="hostAnswer" placeholder="粘贴对方的应答码"></textarea>
+          <button id="hostConnect" class="btn-primary">连接</button>
+        </div>
+
+        <div id="guestFlow" class="hidden net-flow">
+          <label>① 粘贴主机给你的邀请码</label>
+          <textarea id="guestOffer" placeholder="粘贴主机的邀请码"></textarea>
+          <button id="guestGen" class="btn-primary">生成应答码</button>
+          <label>② 你的应答码（复制发回主机）</label>
+          <textarea id="guestAnswer" readonly placeholder="生成应答后显示"></textarea>
+          <button id="copyAnswer" class="btn-ghost">复制应答码</button>
+        </div>
+
+        <div id="netMsg" class="net-msg"></div>
+      </div>
+    </div>
+
+    <script type="module" src="./src/main.js?v=DEV"></script>
+  </body>
+</html>

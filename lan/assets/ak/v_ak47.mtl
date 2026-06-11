@@ -1,0 +1,40 @@
+newmtl tex0
+Kd 1 1 1
+map_Kd view_glove.png
+d 1
+
+newmtl tex1
+Kd 1 1 1
+map_Kd view_skin.png
+d 1
+
+newmtl tex2
+Kd 1 1 1
+map_Kd view_finger.png
+d 1
+
+newmtl tex3
+Kd 1 1 1
+map_Kd QS_AK1.png
+d 1
+
+newmtl tex4
+Kd 1 1 1
+map_Kd QS_AK2.png
+d 1
+
+newmtl tex5
+Kd 1 1 1
+map_Kd QS_AK3.png
+d 1
+
+newmtl tex6
+Kd 1 1 1
+map_Kd QS_AK4.png
+d 1
+
+newmtl tex7
+Kd 1 1 1
+map_Kd QS_AK5.png
+d 1
+

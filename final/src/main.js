@@ -15,7 +15,7 @@ import { renderInventory, ITEM_DB } from "./inventory.js?v=DEV";
 // Human-readable build version: YYMMDD + 3-digit deploy count for that day
 // (e.g. 260611001 = 2026-06-11, 1st deploy). Bumped by hand each deploy so a
 // refresh visibly confirms whether the new build is live.
-const BUILD_VERSION = "260611022";
+const BUILD_VERSION = "260611023";
 (() => {
   const el = document.getElementById("buildVer");
   if (el) el.textContent = `v${BUILD_VERSION}`;
@@ -23,10 +23,10 @@ const BUILD_VERSION = "260611022";
 
 // --- Renderer / scene / camera ------------------------------------------
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // cap super-sampling for perf
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFShadowMap; // cheaper than PCFSoft
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping; // filmic, realistic response
 renderer.toneMappingExposure = 1.05;
 document.body.appendChild(renderer.domElement);

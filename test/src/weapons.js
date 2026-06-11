@@ -66,6 +66,9 @@ export function createWeapons(camera, scene, world, player, hooks = {}) {
     } else if (obj.userData && obj.userData.type === "enemy") {
       const killed = world.damageEnemy(obj.userData.enemy, damage);
       if (hooks.onHitmarker) hooks.onHitmarker(killed);
+    } else if (obj.userData && typeof obj.userData.onHit === "function") {
+      obj.userData.onHit(damage); // e.g. a networked opponent in the 1v1 mode
+      if (hooks.onHitmarker) hooks.onHitmarker(false);
     }
   }
 
