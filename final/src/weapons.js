@@ -8,7 +8,7 @@ import { createViewmodel } from "./viewmodel.js?v=DEV";
 const DEFS = [
   { id: "rifle", name: "步枪", mode: "auto", damage: 14, fireRate: 0.1, mag: 30, reserve: 150, reload: 1.4, range: 120, recoil: 0.05, kick: 0.012 },
   { id: "pistol", name: "手枪", mode: "semi", damage: 26, fireRate: 0.2, mag: 12, reserve: 96, reload: 1.0, range: 90, recoil: 0.08, kick: 0.022 },
-  { id: "knife", name: "近战刀", mode: "melee", damage: 150, fireRate: 0.5, range: 2.4 },
+  { id: "knife", name: "近战刀", mode: "melee", damage: 150, fireRate: 0.42, range: 2.4 },
 ];
 
 export function createWeapons(camera, scene, world, player, hooks = {}) {
@@ -116,6 +116,7 @@ export function createWeapons(camera, scene, world, player, hooks = {}) {
     } else if (current.def.mode === "semi") {
       fireRanged(time);
     } else {
+      current.firing = true; // hold to keep swinging
       meleeSwing(time);
     }
   }
@@ -149,10 +150,11 @@ export function createWeapons(camera, scene, world, player, hooks = {}) {
     }
 
     if (current.def.mode === "auto" && current.firing && equipPhase === "idle") fireRanged(time);
+    if (current.def.mode === "melee" && current.firing && equipPhase === "idle") meleeSwing(time);
 
     const w = current;
     if (w.def.mode === "melee") {
-      w.swing = Math.max(0, w.swing - dt * 2.6);
+      w.swing = Math.max(0, w.swing - dt * 2.4);
     } else {
       w.recoil = Math.max(0, w.recoil - dt * 0.9);
     }
@@ -184,14 +186,14 @@ export function createWeapons(camera, scene, world, player, hooks = {}) {
 
     if (w.def.mode === "melee") {
       if (w.swing > 0.001) {
-        const a = 1 - w.swing; // 0 -> 1 over the attack
-        posX += -0.14 + a * 0.3; // sweep left -> right
-        posY += 0.06 - a * 0.16; // low -> up
-        rotZ += -0.5 + a * 1.25; // rotate through the slash
-        rotX += a * 0.35;
-        vm.setBladeDrawn(true);
-      } else {
-        vm.setBladeDrawn(false);
+        // ease the blade out and back along a slash arc so it never snaps home
+        const p = 1 - w.swing; // 0 -> 1 over the swing
+        const arc = Math.sin(p * Math.PI); // 0 -> 1 -> 0
+        posX += -0.16 * arc; // sweep across
+        posY += 0.08 * arc;
+        posZ += -0.14 * arc; // thrust forward
+        rotZ += -1.0 * arc; // slash rotation
+        rotX += 0.35 * arc;
       }
     } else {
       posZ += w.recoil * 1.25; // kick straight back toward the eye (front-back)
