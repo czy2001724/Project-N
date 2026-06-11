@@ -23,9 +23,9 @@ const TEX = [
 // -1), so these values are authored in that mirrored frame: bigger, lower, and
 // angled so the gun fills the lower-right and the forearm ends sit off-screen.
 // Hold tuned by hand in tools/aim.html (mirror = true is applied in viewmodel.js).
-const SCALE = 0.061; // GoldSrc units (~inches) -> metres
-const ROT = new THREE.Euler(-0.06, 0.12, -0.03);
-const POS = new THREE.Vector3(0.045, -0.685, -0.1);
+const SCALE = 0.067; // GoldSrc units (~inches) -> metres
+const ROT = new THREE.Euler(0, 0.12, 0);
+const POS = new THREE.Vector3(-0.6, -0.7, -0.1);
 
 export function loadAK(onReady, onError) {
   const texLoader = new THREE.TextureLoader().setPath("assets/ak/");
