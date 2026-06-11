@@ -45,6 +45,7 @@ function onKeyDown(e) {
     e.preventDefault();
   }
   player.keys.add(e.code);
+  if (e.code === "Space" && !e.repeat) player.queueJump();
   if (e.code === "KeyR") weapons.reload();
   if (e.code === "Digit1") weapons.select(0);
   if (e.code === "Digit2") weapons.select(1);
@@ -93,6 +94,12 @@ window.addEventListener("mousemove", onMouseMove);
 window.addEventListener("mousedown", onMouseDown);
 window.addEventListener("mouseup", onMouseUp);
 document.addEventListener("pointerlockchange", onPointerLockChange);
+
+// Losing focus can drop keyup events — clear held keys so nothing sticks.
+window.addEventListener("blur", () => {
+  player.keys.clear();
+  weapons.triggerUp();
+});
 
 window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;

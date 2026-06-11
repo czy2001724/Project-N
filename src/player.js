@@ -29,9 +29,8 @@ export function createPlayer(camera, world) {
   const right = new THREE.Vector3();
 
   // jump feel helpers
-  let jumpBuffer = 0; // remembers a recent jump press
+  let jumpBuffer = 0; // set by queueJump() on a real keydown event
   let coyote = 0; // lets you jump just after leaving the ground
-  let spacePrev = false;
 
   function eyeHeight() {
     return state.crouching ? 1.05 : 1.62;
@@ -46,6 +45,13 @@ export function createPlayer(camera, world) {
   // Small vertical kick used by weapon recoil.
   function addPitch(amount) {
     state.pitch = clamp(state.pitch + amount, -1.5, 1.5);
+  }
+
+  // Called from the Space keydown event. Driving the jump from the event
+  // (instead of polling keys.has("Space")) means a lost keyup can never
+  // leave Space "stuck" and disable future jumps.
+  function queueJump() {
+    jumpBuffer = 0.12;
   }
 
   function resolveCollisions() {
@@ -109,10 +115,7 @@ export function createPlayer(camera, world) {
 
     resolveCollisions();
 
-    // jump with input buffer + coyote time (forgiving, frame-independent)
-    const wantJump = keys.has("Space");
-    if (wantJump && !spacePrev) jumpBuffer = 0.12; // fresh press
-    spacePrev = wantJump;
+    // jump with input buffer + coyote time (buffer is event-driven)
     jumpBuffer = Math.max(0, jumpBuffer - dt);
     coyote = state.grounded ? 0.1 : Math.max(0, coyote - dt);
     if (jumpBuffer > 0 && coyote > 0) {
@@ -136,5 +139,5 @@ export function createPlayer(camera, world) {
     camera.rotation.x = state.pitch;
   }
 
-  return { state, keys, look, addPitch, update };
+  return { state, keys, look, addPitch, queueJump, update };
 }
