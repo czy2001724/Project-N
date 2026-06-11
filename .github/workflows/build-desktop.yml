@@ -1,0 +1,50 @@
+name: Build Desktop (Windows .exe)
+
+# Builds the offline Windows client with Electron and publishes the .exe to a
+# GitHub Release. Trigger manually (Actions tab -> Run workflow) or by pushing a
+# tag like desktop-v1.
+on:
+  workflow_dispatch:
+  push:
+    tags: ["desktop-v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install desktop dependencies
+        working-directory: desktop
+        run: npm install
+
+      - name: Bundle the web app (offline)
+        working-directory: desktop
+        run: node build-app.cjs
+
+      - name: Package Windows .exe
+        working-directory: desktop
+        run: npx electron-builder --win --publish never
+
+      - name: Show built files
+        working-directory: desktop
+        run: dir dist
+
+      - name: Publish to GitHub Release
+        working-directory: desktop
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_type == 'tag' && github.ref_name || 'desktop-latest' }}
+        run: |
+          gh release create "$TAG" dist/*.exe \
+            --title "Project N — 桌面客户端" \
+            --notes "离线 Windows 客户端（金 AK 持枪雏形 M1）。下载 ProjectN-*-portable.exe，双击运行，无需安装、无需联网。" \
+          || gh release upload "$TAG" dist/*.exe --clobber

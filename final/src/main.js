@@ -10,6 +10,15 @@ import { createWeapons } from "./weapons.js?v=DEV";
 import { createUI } from "./ui.js?v=DEV";
 import { toonify } from "./toonify.js?v=DEV";
 
+// Human-readable build version: YYMMDD + 3-digit deploy count for that day
+// (e.g. 260611001 = 2026-06-11, 1st deploy). Bumped by hand each deploy so a
+// refresh visibly confirms whether the new build is live.
+const BUILD_VERSION = "260611015";
+(() => {
+  const el = document.getElementById("buildVer");
+  if (el) el.textContent = `v${BUILD_VERSION}`;
+})();
+
 // --- Renderer / scene / camera ------------------------------------------
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -57,7 +66,9 @@ const weapons = createWeapons(camera, scene, world, player, {
   },
 });
 
-// Apply the anime / cel-shaded look to the 3D scene (weapons are 2D now).
+// Apply the anime / cel-shaded look to the whole scene. The view-model is a
+// child of the camera (added above), so the weapon + rigged arms get the same
+// toon shading + outline treatment as the world.
 toonify(scene, { outlineMaxRadius: 5, outlineScale: 1.045 });
 
 const ui = createUI({

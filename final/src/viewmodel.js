@@ -1,207 +1,114 @@
-// 2D first-person view-model. Each weapon is drawn as a flat, anime / cel
-// style image on a canvas (bold outline + flat fill + one shadow tone), shown
-// in a screen-anchored layer at the bottom. Recoil / reload / switch / katana
-// draw-slash are CSS transforms applied to the layer. No code-built 3D models.
+import * as THREE from "three";
+import { buildRifle, buildPistol, buildKnife, makeFlash } from "./models.js?v=DEV";
+import { loadAK } from "./akmodel.js?v=DEV";
 
-const OUT = "#0e131b";
-const SKIN = "#eab88e";
-const SKIN_SH = "#cf9670";
-const METAL = "#3b4350";
-const METAL_SH = "#272d39";
-const POLY = "#2c313b";
-const BLADE = "#e2eaf2";
-const BLADE_SH = "#aebccb";
-const ACCENT = "#49d0ff";
-const ACCENT_D = "#2aa6e0";
+// 3D first-person view-model. Each weapon is a real mesh gripped by rigged arms
+// (see models.js), parented under the camera. A `poseGroup` applies the live
+// recoil / sway / reload / switch transform every frame. This replaces the old
+// flat 2D canvas overlay so hands actually sit on the weapon in perspective.
 
-function ctxOf(w, h) {
-  const c = document.createElement("canvas");
-  c.width = w;
-  c.height = h;
-  return c;
-}
-
-function poly(ctx, pts, fill, lw = 7, stroke = OUT) {
-  ctx.beginPath();
-  ctx.moveTo(pts[0][0], pts[0][1]);
-  for (let i = 1; i < pts.length; i += 1) ctx.lineTo(pts[i][0], pts[i][1]);
-  ctx.closePath();
-  if (fill) { ctx.fillStyle = fill; ctx.fill(); }
-  if (lw) { ctx.lineJoin = "round"; ctx.lineWidth = lw; ctx.strokeStyle = stroke; ctx.stroke(); }
-}
-
-function rrect(ctx, x, y, w, h, r, fill, lw = 7, stroke = OUT) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
-  if (fill) { ctx.fillStyle = fill; ctx.fill(); }
-  if (lw) { ctx.lineJoin = "round"; ctx.lineWidth = lw; ctx.strokeStyle = stroke; ctx.stroke(); }
-}
-
-// A stylized hand gripping around a point (fingers as rounded bars).
-function hand(ctx, x, y, scale = 1, flip = 1) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.scale(flip * scale, scale);
-  // palm
-  rrect(ctx, -34, -6, 64, 60, 18, SKIN);
-  // shadow side
-  ctx.save();
-  ctx.beginPath();
-  rrect(ctx, -34, 26, 64, 28, 14, SKIN_SH, 0);
-  ctx.restore();
-  // four fingers wrapping over the top
-  for (let i = 0; i < 4; i += 1) {
-    rrect(ctx, -32 + i * 16, -30, 14, 34, 7, SKIN);
-  }
-  // thumb
-  rrect(ctx, 22, 6, 18, 34, 9, SKIN);
-  ctx.restore();
-}
-
-function drawRifle(ctx, W, H) {
-  ctx.save();
-  ctx.translate(W * 0.52, H * 0.62);
-  ctx.rotate(-0.32);
-  // stock + receiver
-  rrect(ctx, 120, -28, 150, 70, 16, METAL);
-  rrect(ctx, -180, -34, 320, 78, 18, METAL);
-  rrect(ctx, -180, 10, 320, 34, 12, METAL_SH, 0);
-  // handguard + barrel
-  rrect(ctx, -360, -22, 200, 50, 14, POLY);
-  rrect(ctx, -470, -12, 130, 26, 10, METAL);
-  // sight + accent
-  rrect(ctx, -40, -64, 60, 26, 8, POLY);
-  rrect(ctx, -150, -20, 250, 8, 4, ACCENT, 0);
-  // magazine
-  ctx.save();
-  ctx.translate(-70, 60);
-  ctx.rotate(0.18);
-  rrect(ctx, -28, -10, 56, 150, 14, METAL);
-  ctx.restore();
-  // pistol grip
-  ctx.save();
-  ctx.translate(40, 70);
-  ctx.rotate(0.4);
-  rrect(ctx, -22, -10, 48, 120, 16, POLY);
-  ctx.restore();
-  ctx.restore();
-
-  // hands
-  hand(ctx, W * 0.6, H * 0.78, 1.15, 1); // right on grip
-  hand(ctx, W * 0.3, H * 0.66, 1.0, -1); // left on handguard
-}
-
-function drawPistol(ctx, W, H) {
-  ctx.save();
-  ctx.translate(W * 0.5, H * 0.58);
-  ctx.rotate(-0.18);
-  rrect(ctx, -150, -34, 250, 64, 16, METAL); // slide
-  rrect(ctx, -150, 6, 250, 24, 10, METAL_SH, 0);
-  rrect(ctx, -190, -22, 60, 38, 10, METAL); // muzzle
-  rrect(ctx, -120, -18, 150, 6, 3, ACCENT, 0);
-  // grip
-  ctx.save();
-  ctx.translate(60, 40);
-  ctx.rotate(0.42);
-  rrect(ctx, -26, -10, 54, 150, 16, POLY);
-  ctx.restore();
-  ctx.restore();
-
-  hand(ctx, W * 0.6, H * 0.82, 1.2, 1); // right
-  hand(ctx, W * 0.46, H * 0.86, 1.1, -1); // left support
-}
-
-// Katana held on the LEFT, right hand crossed over the hilt (idle: sheathed).
-function drawKatana(ctx, W, H, drawn) {
-  // hilt area lower-left
-  ctx.save();
-  ctx.translate(W * 0.34, H * 0.74);
-  ctx.rotate(drawn ? -0.9 : -0.35);
-  // tsuka (handle)
-  rrect(ctx, -22, -20, 44, 230, 16, POLY);
-  for (let i = 0; i < 5; i += 1) rrect(ctx, -22, -10 + i * 42, 44, 16, 6, ACCENT_D, 0);
-  // tsuba (guard)
-  rrect(ctx, -46, -44, 92, 26, 10, METAL);
-  if (drawn) {
-    // blade extends up-right
-    ctx.save();
-    ctx.translate(0, -40);
-    ctx.rotate(-0.12);
-    poly(ctx, [[-20, 0], [20, 0], [10, -430], [-26, -440]], BLADE, 7); // curved blade
-    poly(ctx, [[-20, 0], [-4, 0], [-12, -430], [-26, -440]], BLADE_SH, 0); // shade side
-    ctx.fillStyle = ACCENT;
-    rrect(ctx, 8, -420, 7, 400, 3, ACCENT, 0); // energy edge
-    ctx.restore();
-  }
-  ctx.restore();
-
-  // hands on the hilt — right hand crossed over from the right
-  hand(ctx, W * 0.34, H * 0.84, 1.15, 1); // lower hand
-  hand(ctx, W * 0.4, H * 0.7, 1.1, 1); // upper (right) hand crossed over
-}
-
-const RENDERERS = {
-  rifle: drawRifle,
-  pistol: drawPistol,
-  knife: (ctx, W, H) => drawKatana(ctx, W, H, false),
-  knife_slash: (ctx, W, H) => drawKatana(ctx, W, H, true),
+// Base placement of each weapon in camera space (eye at origin, -Z forward).
+const BASE = {
+  rifle: { pos: new THREE.Vector3(0.15, -0.17, -0.5), rot: new THREE.Euler(0.02, 0.06, 0.02) },
+  pistol: { pos: new THREE.Vector3(0.12, -0.19, -0.45), rot: new THREE.Euler(0.0, 0.05, 0.0) },
+  knife: { pos: new THREE.Vector3(0.0, 0.0, -0.4), rot: new THREE.Euler(0.0, 0.0, 0.0) },
 };
 
-export function createViewmodel() {
-  const W = 1000;
-  const H = 560;
+export function createViewmodel(camera) {
+  const root = new THREE.Group();
+  camera.add(root);
 
-  const root = document.createElement("div");
-  root.id = "viewmodel";
-  document.body.appendChild(root);
+  const poseGroup = new THREE.Group(); // live pose (recoil/sway/switch) lives here
+  root.add(poseGroup);
 
-  const wrap = document.createElement("div");
-  wrap.id = "vmWrap";
-  root.appendChild(wrap);
-
-  const flashEl = document.createElement("div");
-  flashEl.id = "vmFlash";
-  root.appendChild(flashEl);
-
-  // pre-render each frame to its own canvas
-  const canvases = {};
-  for (const key of Object.keys(RENDERERS)) {
-    const c = ctxOf(W, H);
-    RENDERERS[key](c.getContext("2d"), W, H);
-    c.classList.add("vmCanvas");
-    c.style.display = "none";
-    wrap.appendChild(c);
-    canvases[key] = c;
+  const builders = { rifle: buildRifle, pistol: buildPistol, knife: buildKnife };
+  const built = {};
+  for (const id of Object.keys(builders)) {
+    const b = builders[id]();
+    const base = BASE[id];
+    b.group.position.copy(base.pos);
+    b.group.rotation.copy(base.rot);
+    b.group.visible = false;
+    poseGroup.add(b.group);
+    built[id] = b;
   }
 
-  let currentKey = null;
-  function show(key) {
-    if (currentKey === key) return;
-    for (const k of Object.keys(canvases)) canvases[k].style.display = k === key ? "block" : "none";
-    currentKey = key;
+  let currentId = null;
+  let flashT = 0;
+  // While the AK is still loading we hide the rifle entirely (rather than flash
+  // the procedural placeholder). It's revealed once the AK swaps in, or if the
+  // load fails and we fall back to the procedural rifle.
+  let akState = "loading"; // loading | ready | failed
+
+  function show(id) {
+    for (const k of Object.keys(built)) {
+      const hideLoadingRifle = id === "rifle" && akState === "loading";
+      built[k].group.visible = k === id && !hideLoadingRifle;
+    }
+    currentId = id;
   }
+
+  // Swap the procedural rifle for the real gold AK (with its own CS arms/hands)
+  // once it loads.
+  loadAK(
+    (holder, muzzle) => {
+      const flash = makeFlash(muzzle);
+      const akGroup = new THREE.Group();
+      akGroup.scale.x = -1; // mirror to a right-handed hold (gun on the right)
+      akGroup.add(holder);
+      akGroup.add(flash);
+      poseGroup.remove(built.rifle.group);
+      poseGroup.add(akGroup);
+      built.rifle = { group: akGroup, muzzle, flash };
+      akState = "ready";
+      if (currentId === "rifle") show("rifle");
+    },
+    (err) => {
+      console.warn("AK model failed to load, keeping procedural rifle:", err);
+      akState = "failed";
+      if (currentId === "rifle") show("rifle");
+    }
+  );
 
   return {
     setWeapon(id) {
       this._id = id;
-      show(id === "knife" ? "knife" : id);
+      show(id);
     },
-    setBladeDrawn(drawn) {
-      if (this._id !== "knife") return;
-      show(drawn ? "knife_slash" : "knife");
-    },
-    setPose({ tx = 0, ty = 0, rot = 0, scale = 1 }) {
-      wrap.style.transform = `translate(${tx}px, ${ty}px) rotate(${rot}deg) scale(${scale})`;
+    // CF-style knife: the blade is always visible, so this is a no-op kept for
+    // API compatibility with the weapon system.
+    setBladeDrawn() {},
+    // Live pose, in metres / radians, applied on top of each weapon's base.
+    setPose({ posX = 0, posY = 0, posZ = 0, rotX = 0, rotY = 0, rotZ = 0 }) {
+      poseGroup.position.set(posX, posY, posZ);
+      poseGroup.rotation.set(rotX, rotY, rotZ);
     },
     flash() {
-      flashEl.classList.remove("show");
-      void flashEl.offsetWidth;
-      flashEl.classList.add("show");
+      flashT = 0.06;
+      const f = built[currentId] && built[currentId].flash;
+      if (f) {
+        f.visible = true;
+        f.rotation.z = Math.random() * Math.PI; // spin the star a bit each shot
+        f.userData.mat.opacity = 1;
+      }
+    },
+    // Called every frame.
+    tick(dt) {
+      // Aspect-lock: a camera-attached view-model's horizontal screen position
+      // depends on the window's aspect ratio. Compensate so it always renders as
+      // if at a 16:9 reference (matches tools/aim.html regardless of window size).
+      root.scale.x = camera.aspect / (16 / 9);
+
+      if (flashT > 0) {
+        flashT -= dt;
+        const f = built[currentId] && built[currentId].flash;
+        if (f) {
+          const k = Math.max(0, flashT / 0.06);
+          f.userData.mat.opacity = k;
+          f.scale.setScalar(0.8 + (1 - k) * 0.6);
+          if (flashT <= 0) f.visible = false;
+        }
+      }
     },
   };
 }

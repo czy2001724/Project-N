@@ -1,0 +1,27 @@
+{
+  "name": "project-n-desktop",
+  "productName": "Project N",
+  "version": "1.0.0",
+  "description": "Project N - sci-fi looter shooter (offline desktop client)",
+  "main": "main.js",
+  "author": "Project N",
+  "license": "MIT",
+  "scripts": {
+    "build:app": "node build-app.cjs",
+    "dist": "node build-app.cjs && electron-builder --win"
+  },
+  "devDependencies": {
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3",
+    "esbuild": "^0.23.1",
+    "three": "0.160.0"
+  },
+  "build": {
+    "appId": "com.projectn.game",
+    "productName": "Project N",
+    "directories": { "output": "dist" },
+    "files": ["main.js", "app/**/*"],
+    "win": { "target": ["portable"] },
+    "portable": { "artifactName": "ProjectN-${version}-portable.exe" }
+  }
+}
