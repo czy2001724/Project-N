@@ -57,9 +57,8 @@ const weapons = createWeapons(camera, scene, world, player, {
   },
 });
 
-// Apply the anime / cel-shaded look once everything is built.
+// Apply the anime / cel-shaded look to the 3D scene (weapons are 2D now).
 toonify(scene, { outlineMaxRadius: 5, outlineScale: 1.045 });
-toonify(camera, { outlineMaxRadius: Infinity, outlineScale: 1.03 }); // weapon view-model
 
 const ui = createUI({
   onResume: () => requestLock(),

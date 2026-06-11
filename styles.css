@@ -439,3 +439,45 @@ canvas {
   box-shadow: inset 0 0 200px 30px rgba(0, 0, 0, 0.5);
   background: radial-gradient(circle at 50% 50%, transparent 58%, rgba(4, 8, 12, 0.32) 100%);
 }
+
+/* 2D first-person view-model (hands + weapon image) */
+#viewmodel {
+  position: fixed;
+  left: 50%;
+  bottom: -40px;
+  transform: translateX(-50%);
+  width: min(900px, 92vw);
+  z-index: 5;
+  pointer-events: none;
+}
+#vmWrap {
+  position: relative;
+  width: 100%;
+  transform-origin: 50% 100%;
+  transition: transform 0.05s linear;
+  filter: drop-shadow(0 -6px 18px rgba(0, 0, 0, 0.45));
+}
+.vmCanvas {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+#vmFlash {
+  position: fixed;
+  left: 50%;
+  top: 52%;
+  width: 180px;
+  height: 180px;
+  transform: translate(-50%, -50%) scale(0.4);
+  background: radial-gradient(circle, rgba(255, 235, 150, 0.95) 0%, rgba(255, 180, 70, 0.5) 35%, transparent 70%);
+  z-index: 6;
+  pointer-events: none;
+  opacity: 0;
+}
+#vmFlash.show {
+  animation: vmflash 0.09s ease-out;
+}
+@keyframes vmflash {
+  0% { opacity: 1; transform: translate(-50%, -50%) scale(0.3); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+}
