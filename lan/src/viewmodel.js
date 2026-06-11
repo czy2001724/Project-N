@@ -11,7 +11,7 @@ import { loadAK } from "./akmodel.js?v=DEV";
 const BASE = {
   rifle: { pos: new THREE.Vector3(0.15, -0.17, -0.5), rot: new THREE.Euler(0.02, 0.06, 0.02) },
   pistol: { pos: new THREE.Vector3(0.12, -0.19, -0.45), rot: new THREE.Euler(0.0, 0.05, 0.0) },
-  knife: { pos: new THREE.Vector3(0.0, 0.0, -0.4), rot: new THREE.Euler(0.0, 0.0, 0.0), scale: 1 },
+  knife: { pos: new THREE.Vector3(-0.08, -0.13, -0.67), rot: new THREE.Euler(-0.14, 0.8, -1.58), scale: 1.12 },
 };
 
 export function createViewmodel(camera) {
