@@ -166,6 +166,7 @@ canvas {
 }
 
 #stats #score,
+#stats #weapon,
 #stats #ammo,
 #stats #health {
   font-size: 20px;

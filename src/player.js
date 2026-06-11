@@ -28,6 +28,11 @@ export function createPlayer(camera, world) {
   const forward = new THREE.Vector3();
   const right = new THREE.Vector3();
 
+  // jump feel helpers
+  let jumpBuffer = 0; // remembers a recent jump press
+  let coyote = 0; // lets you jump just after leaving the ground
+  let spacePrev = false;
+
   function eyeHeight() {
     return state.crouching ? 1.05 : 1.62;
   }
@@ -104,11 +109,19 @@ export function createPlayer(camera, world) {
 
     resolveCollisions();
 
-    // jump + gravity
-    if (keys.has("Space") && state.grounded) {
+    // jump with input buffer + coyote time (forgiving, frame-independent)
+    const wantJump = keys.has("Space");
+    if (wantJump && !spacePrev) jumpBuffer = 0.12; // fresh press
+    spacePrev = wantJump;
+    jumpBuffer = Math.max(0, jumpBuffer - dt);
+    coyote = state.grounded ? 0.1 : Math.max(0, coyote - dt);
+    if (jumpBuffer > 0 && coyote > 0) {
       state.vy = state.jumpSpeed;
       state.grounded = false;
+      jumpBuffer = 0;
+      coyote = 0;
     }
+
     state.vy -= state.gravity * dt;
     state.pos.y += state.vy * dt;
     if (state.pos.y <= 0) {

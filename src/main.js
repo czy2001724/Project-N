@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { createWorld } from "./world.js";
 import { createPlayer } from "./player.js";
-import { createWeapon } from "./weapon.js";
+import { createWeapons } from "./weapons.js";
 
 // --- Renderer / scene / camera ------------------------------------------
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -26,8 +26,9 @@ const hitmarker = document.getElementById("hitmarker");
 const scoreEl = document.getElementById("score");
 const ammoEl = document.getElementById("ammo");
 const healthEl = document.getElementById("health");
+const weaponEl = document.getElementById("weapon");
 
-const weapon = createWeapon(camera, scene, world, player, {
+const weapons = createWeapons(camera, scene, world, player, {
   onHitmarker() {
     // retrigger the CSS flash animation
     hitmarker.classList.remove("show");
@@ -37,14 +38,17 @@ const weapon = createWeapon(camera, scene, world, player, {
 });
 
 // --- Input --------------------------------------------------------------
-const inputState = { locked: false, firing: false };
+const inputState = { locked: false };
 
 function onKeyDown(e) {
   if (["KeyW", "KeyA", "KeyS", "KeyD", "Space", "ShiftLeft", "ControlLeft"].includes(e.code)) {
     e.preventDefault();
   }
   player.keys.add(e.code);
-  if (e.code === "KeyR") weapon.reload();
+  if (e.code === "KeyR") weapons.reload();
+  if (e.code === "Digit1") weapons.select(0);
+  if (e.code === "Digit2") weapons.select(1);
+  if (e.code === "Digit3") weapons.select(2);
 }
 
 function onKeyUp(e) {
@@ -58,11 +62,11 @@ function onMouseMove(e) {
 
 function onMouseDown(e) {
   if (!inputState.locked) return;
-  if (e.button === 0) inputState.firing = true;
+  if (e.button === 0) weapons.triggerDown(performance.now() / 1000);
 }
 
 function onMouseUp(e) {
-  if (e.button === 0) inputState.firing = false;
+  if (e.button === 0) weapons.triggerUp();
 }
 
 function requestLock() {
@@ -74,7 +78,7 @@ function onPointerLockChange() {
   overlay.classList.toggle("hidden", inputState.locked);
   crosshair.style.display = inputState.locked ? "block" : "none";
   if (!inputState.locked) {
-    inputState.firing = false;
+    weapons.triggerUp();
     player.keys.clear();
   }
 }
@@ -99,9 +103,9 @@ window.addEventListener("resize", () => {
 // --- HUD ----------------------------------------------------------------
 function updateHUD() {
   scoreEl.textContent = String(world.state.score);
-  ammoEl.textContent = weapon.stats.reloading
-    ? "换弹中…"
-    : `${weapon.stats.ammo} / ${weapon.stats.reserve}`;
+  const hud = weapons.getHUD();
+  weaponEl.textContent = hud.name;
+  ammoEl.textContent = hud.ammoText;
   healthEl.textContent = String(Math.round(player.state.health));
 }
 
@@ -113,8 +117,7 @@ function animate(now) {
 
   if (inputState.locked) {
     player.update(dt);
-    if (inputState.firing) weapon.tryFire(now / 1000);
-    weapon.update(dt);
+    weapons.update(dt, now / 1000);
     world.update(dt);
   }
 
