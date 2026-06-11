@@ -10,6 +10,14 @@ import { createWeapons } from "./weapons.js?v=DEV";
 import { createUI } from "./ui.js?v=DEV";
 import { toonify } from "./toonify.js?v=DEV";
 
+// Show the build version (the cache-bust hash baked into this module's URL) in
+// the HUD, so a refresh visibly confirms whether the new build is live.
+(() => {
+  const v = new URLSearchParams(import.meta.url.split("?")[1] || "").get("v") || "DEV";
+  const el = document.getElementById("buildVer");
+  if (el) el.textContent = `build ${v}`;
+})();
+
 // --- Renderer / scene / camera ------------------------------------------
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
