@@ -25,9 +25,9 @@ const TEX = [
 // Barrel is ~parallel to -Z, so it projects onto the screen centre (crosshair);
 // roll (z) angles the gun to show its side while keeping stock->muzzle->crosshair
 // collinear. Tiny yaw nudges the line dead-centre.
-const SCALE = 0.03; // GoldSrc units (~inches) -> metres
-const ROT = new THREE.Euler(0.0, -0.03, 0.4);
-const POS = new THREE.Vector3(-0.15, -0.45, -0.3);
+const SCALE = 0.034; // GoldSrc units (~inches) -> metres
+const ROT = new THREE.Euler(0.0, -0.05, 0.52);
+const POS = new THREE.Vector3(-0.25, -0.4, -0.28);
 
 export function loadAK(onReady, onError) {
   const texLoader = new THREE.TextureLoader().setPath("assets/ak/");
