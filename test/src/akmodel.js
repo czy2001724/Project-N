@@ -22,12 +22,12 @@ const TEX = [
 // model is mirrored to a right-handed hold in viewmodel.js (akGroup.scale.x =
 // -1), so these values are authored in that mirrored frame: bigger, lower, and
 // angled so the gun fills the lower-right and the forearm ends sit off-screen.
-// Barrel is ~parallel to -Z, so it projects onto the screen centre (crosshair);
-// roll (z) angles the gun to show its side while keeping stock->muzzle->crosshair
-// collinear. Tiny yaw nudges the line dead-centre.
-const SCALE = 0.034; // GoldSrc units (~inches) -> metres
-const ROT = new THREE.Euler(0.0, -0.05, 0.52);
-const POS = new THREE.Vector3(-0.25, -0.4, -0.28);
+// CrossFire-style broadside hold: yaw shows the gun's full left profile
+// (barrel + curved magazine), pointing up-left at a shallow angle in the
+// lower-right, stock running off the right edge. Tuned via the offline previewer.
+const SCALE = 0.032; // GoldSrc units (~inches) -> metres
+const ROT = new THREE.Euler(0.0, -0.7, -0.14);
+const POS = new THREE.Vector3(-0.22, -0.3, -0.3);
 
 export function loadAK(onReady, onError) {
   const texLoader = new THREE.TextureLoader().setPath("assets/ak/");
