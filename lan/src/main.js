@@ -9,7 +9,7 @@ import { createPlayer } from "./player.js?v=DEV";
 import { createWeapons } from "./weapons.js?v=DEV";
 import { createNet } from "./net.js?v=DEV";
 
-const BUILD_VERSION = "260611lan1";
+const BUILD_VERSION = "260611lan2";
 document.getElementById("buildVer").textContent = `v${BUILD_VERSION}`;
 
 // --- renderer / scene ---
@@ -100,7 +100,8 @@ function takeDamage(d) {
 net.on("message", (m) => {
   if (m.t === "s") {
     opp.group.visible = true;
-    oppTarget.x = m.x; oppTarget.z = m.z; oppTarget.ry = m.ry;
+    // ry + PI: the avatar's visor faces +z, but the player looks down -z at yaw 0
+    oppTarget.x = m.x; oppTarget.y = m.y || 0; oppTarget.z = m.z; oppTarget.ry = m.ry + Math.PI;
     if (typeof m.hp === "number") oppHpEl.textContent = String(Math.round(m.hp));
     if (m.f) oppFlash = 0.05;
   } else if (m.t === "hit") {
@@ -212,6 +213,7 @@ function animate(now) {
   // smooth opponent
   if (opp.group.visible) {
     opp.group.position.x += (oppTarget.x - opp.group.position.x) * 0.25;
+    opp.group.position.y += (oppTarget.y - opp.group.position.y) * 0.25;
     opp.group.position.z += (oppTarget.z - opp.group.position.z) * 0.25;
     let dy = oppTarget.ry - opp.group.rotation.y;
     while (dy > Math.PI) dy -= Math.PI * 2; while (dy < -Math.PI) dy += Math.PI * 2;

@@ -51,7 +51,10 @@ export function createPlayer(camera, world) {
   // (instead of polling keys.has("Space")) means a lost keyup can never
   // leave Space "stuck" and disable future jumps.
   function queueJump() {
-    jumpBuffer = 0.12;
+    // Space always jumps the instant it's pressed, in any state (no ground /
+    // coyote gating), so a jump input is never eaten.
+    state.vy = state.jumpSpeed;
+    state.grounded = false;
   }
 
   function resolveCollisions() {
@@ -125,15 +128,7 @@ export function createPlayer(camera, world) {
 
     resolveCollisions();
 
-    // jump with input buffer + coyote time (buffer is event-driven)
-    jumpBuffer = Math.max(0, jumpBuffer - dt);
-    coyote = state.grounded ? 0.1 : Math.max(0, coyote - dt);
-    if (jumpBuffer > 0 && coyote > 0) {
-      state.vy = state.jumpSpeed;
-      state.grounded = false;
-      jumpBuffer = 0;
-      coyote = 0;
-    }
+    // (jump is applied immediately in queueJump, on the Space keydown event)
 
     state.vy -= state.gravity * dt;
     state.pos.y += state.vy * dt;
