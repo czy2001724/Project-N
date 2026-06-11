@@ -14,8 +14,8 @@ export function createWorld(scene, hooks = {}) {
   scene.fog = new THREE.Fog(0x0c1622, 36, 92);
 
   // --- Lighting --------------------------------------------------------
-  scene.add(new THREE.HemisphereLight(0xcfe6ff, 0x1a2433, 0.8));
-  const key = new THREE.DirectionalLight(0xf2f8ff, 0.8);
+  scene.add(new THREE.HemisphereLight(0xcfe6ff, 0x35506a, 1.1));
+  const key = new THREE.DirectionalLight(0xfff4e0, 2.8); // sun
   key.position.set(8, 20, 12);
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
@@ -356,8 +356,14 @@ export function createWorld(scene, hooks = {}) {
   // store the base atmosphere so we can swap to a forest sky on deploy
   const baseFog = scene.fog;
   const baseBg = scene.background;
-  const forestFog = new THREE.Fog(0xbcd8cf, 14, 62);
-  const forestBg = new THREE.Color(0xa6d3e0);
+  const forestFog = new THREE.Fog(0xc3d8cf, 18, 72);
+  const forestBg = (() => {
+    const c = document.createElement("canvas"); c.width = 8; c.height = 256;
+    const x = c.getContext("2d"); const g = x.createLinearGradient(0, 0, 0, 256);
+    g.addColorStop(0, "#5e93c8"); g.addColorStop(0.55, "#9fc2d6"); g.addColorStop(1, "#ccd9cf");
+    x.fillStyle = g; x.fillRect(0, 0, 8, 256);
+    return new THREE.CanvasTexture(c);
+  })();
   // all forest geometry lives in this group so it can be hidden (not rendered)
   // while the player is back in the base.
   const areaGroup = new THREE.Group();
@@ -378,18 +384,21 @@ export function createWorld(scene, hooks = {}) {
   }
   function makeTree(kind) {
     const g = new THREE.Group();
-    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.27, 2.2, 7), new THREE.MeshStandardMaterial({ color: 0x6b4a2f, roughness: 0.95 }));
-    trunk.position.y = 1.1; trunk.castShadow = true; g.add(trunk);
-    if (kind === 0) { // conifer
-      const greens = [0x2f6b3a, 0x357a42, 0x274d2f];
-      for (let i = 0; i < 3; i += 1) {
-        const cone = new THREE.Mesh(new THREE.ConeGeometry(1.5 - i * 0.42, 1.7, 8), new THREE.MeshStandardMaterial({ color: greens[i], roughness: 0.85 }));
-        cone.position.y = 2.2 + i * 1.0; cone.castShadow = true; g.add(cone);
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.3, 2.4, 8), new THREE.MeshStandardMaterial({ color: 0x4f3a26, roughness: 1 }));
+    trunk.position.y = 1.2; trunk.castShadow = true; trunk.receiveShadow = true; g.add(trunk);
+    const tint = 0.85 + Math.random() * 0.3;
+    if (kind === 0) { // conifer — 4 layered cones, varied green
+      const base = new THREE.Color(0x2e5a30).multiplyScalar(tint);
+      for (let i = 0; i < 4; i += 1) {
+        const c = base.clone().offsetHSL(0, 0, (Math.random() - 0.5) * 0.06);
+        const cone = new THREE.Mesh(new THREE.ConeGeometry(1.7 - i * 0.34, 1.7, 9), new THREE.MeshStandardMaterial({ color: c, roughness: 0.9, flatShading: true }));
+        cone.position.y = 2.1 + i * 0.95; cone.castShadow = true; g.add(cone);
       }
-    } else { // broadleaf
-      const fol = new THREE.MeshStandardMaterial({ color: 0x4f9a4a, roughness: 0.85 });
-      for (const [dx, dy, dz, r] of [[0, 2.7, 0, 1.3], [0.7, 2.4, 0.2, 0.9], [-0.6, 2.5, -0.3, 0.95]]) {
-        const s = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 0), fol);
+    } else { // broadleaf — organic foliage clump
+      const base = new THREE.Color(0x46792f).multiplyScalar(tint);
+      for (const [dx, dy, dz, r] of [[0, 2.8, 0, 1.5], [0.9, 2.5, 0.2, 1.0], [-0.8, 2.6, -0.3, 1.05], [0.1, 3.4, 0.3, 0.95], [-0.2, 2.9, 0.8, 0.85]]) {
+        const c = base.clone().offsetHSL(0, 0, (Math.random() - 0.5) * 0.06);
+        const s = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 1), new THREE.MeshStandardMaterial({ color: c, roughness: 0.85, flatShading: true }));
         s.position.set(dx, dy, dz); s.castShadow = true; g.add(s);
       }
     }
@@ -407,7 +416,7 @@ export function createWorld(scene, hooks = {}) {
     }
     // scattered trees (clearings near spawn 0,0 and extract 0,8)
     let placed = 0, tries = 0;
-    while (placed < 100 && tries < 700) {
+    while (placed < 150 && tries < 1100) {
       tries += 1;
       const ex = (Math.random() - 0.5) * 2 * (FH - 2);
       const ez = (Math.random() - 0.5) * 2 * (FH - 2);
@@ -421,9 +430,9 @@ export function createWorld(scene, hooks = {}) {
       placed += 1;
     }
     // dense boundary ring (natural wall)
-    for (let a = 0; a < Math.PI * 2; a += 0.14) {
-      const r = FH - 0.5 + Math.random() * 2;
-      const t = makeTree(0); const s = 1 + Math.random() * 0.6;
+    for (let a = 0; a < Math.PI * 2; a += 0.09) {
+      const r = FH - 0.5 + Math.random() * 2.5;
+      const t = makeTree(Math.random() < 0.7 ? 0 : 1); const s = 1 + Math.random() * 0.7;
       t.scale.setScalar(s); t.position.set(AX + Math.cos(a) * r, 0, Math.sin(a) * r); t.rotation.y = Math.random() * 6.28;
       areaGroup.add(t);
     }
@@ -560,7 +569,8 @@ export function createWorld(scene, hooks = {}) {
     for (const e of enemies) {
       if (!e.alive) continue;
       e.group.position.y = Math.sin(state.time * 1.6 + e.phase) * 0.04;
-      if (playerPos) { e.group.lookAt(playerPos.x, e.group.position.y + 1.3, playerPos.z); e.group.rotateY(Math.PI); }
+      // face the player on the yaw axis only (no pitch, so it never tips over)
+      if (playerPos) e.group.rotation.set(0, Math.atan2(playerPos.x - e.group.position.x, playerPos.z - e.group.position.z), 0);
       if (e.hitFlash > 0) e.hitFlash = Math.max(0, e.hitFlash - dt * 4);
     }
     // loot orbs: bob + spin, pick up when the player walks over them.

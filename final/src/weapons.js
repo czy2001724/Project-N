@@ -194,9 +194,8 @@ export function createWeapons(camera, scene, world, player, hooks = {}) {
         vm.setBladeDrawn(false);
       }
     } else {
-      posZ += w.recoil * 0.65; // recoil kicks the weapon back toward the eye
-      rotX += w.recoil * 1.6; // muzzle climb
-      posY += w.recoil * 0.05;
+      posZ += w.recoil * 1.25; // kick straight back toward the eye (front-back)
+      rotX += w.recoil * 0.2; // only a hint of muzzle rise
     }
 
     vm.setPose({ posX, posY, posZ, rotX, rotY, rotZ });

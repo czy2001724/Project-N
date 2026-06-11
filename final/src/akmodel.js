@@ -48,7 +48,7 @@ export function loadAK(onReady, onError) {
     // Arm meshes (textures 0-2) use a clean uniform skin tone instead of the
     // gritty CS glove/skin textures; the gun keeps its gold texture.
     if (ti < 3) {
-      return new THREE.MeshToonMaterial({ color: 0xeac09a, emissive: 0x241a10, side: THREE.DoubleSide });
+      return new THREE.MeshStandardMaterial({ color: 0xd9a578, roughness: 0.75, metalness: 0.0, side: THREE.DoubleSide });
     }
     const gm = new THREE.MeshBasicMaterial({
       map: tex(ti), transparent: true, alphaTest: 0.5, side: THREE.DoubleSide,

@@ -8,7 +8,6 @@ import { createWorld } from "./world.js?v=DEV";
 import { createPlayer } from "./player.js?v=DEV";
 import { createWeapons } from "./weapons.js?v=DEV";
 import { createUI } from "./ui.js?v=DEV";
-import { toonify } from "./toonify.js?v=DEV";
 import "./shell.js?v=DEV"; // boot logo + login + lobby + backpack (front-end shell)
 import { account } from "./account.js?v=DEV";
 import { renderInventory, ITEM_DB } from "./inventory.js?v=DEV";
@@ -16,7 +15,7 @@ import { renderInventory, ITEM_DB } from "./inventory.js?v=DEV";
 // Human-readable build version: YYMMDD + 3-digit deploy count for that day
 // (e.g. 260611001 = 2026-06-11, 1st deploy). Bumped by hand each deploy so a
 // refresh visibly confirms whether the new build is live.
-const BUILD_VERSION = "260611018";
+const BUILD_VERSION = "260611019";
 (() => {
   const el = document.getElementById("buildVer");
   if (el) el.textContent = `v${BUILD_VERSION}`;
@@ -28,7 +27,8 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.toneMapping = THREE.NoToneMapping; // flat, saturated anime colours
+renderer.toneMapping = THREE.ACESFilmicToneMapping; // filmic, realistic response
+renderer.toneMappingExposure = 1.05;
 document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
@@ -91,11 +91,6 @@ const weapons = createWeapons(camera, scene, world, player, {
     hitmarker.classList.add("show");
   },
 });
-
-// Apply the anime / cel-shaded look to the whole scene. The view-model is a
-// child of the camera (added above), so the weapon + rigged arms get the same
-// toon shading + outline treatment as the world.
-toonify(scene, { outlineMaxRadius: 5, outlineScale: 1.045 });
 
 const ui = createUI({
   onResume: () => requestLock(),
