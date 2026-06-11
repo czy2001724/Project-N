@@ -11,7 +11,7 @@ import { loadAK } from "./akmodel.js?v=DEV";
 const BASE = {
   rifle: { pos: new THREE.Vector3(0.15, -0.17, -0.5), rot: new THREE.Euler(0.02, 0.06, 0.02) },
   pistol: { pos: new THREE.Vector3(0.12, -0.19, -0.45), rot: new THREE.Euler(0.0, 0.05, 0.0) },
-  knife: { pos: new THREE.Vector3(0.0, 0.0, -0.4), rot: new THREE.Euler(0.0, 0.0, 0.0) },
+  knife: { pos: new THREE.Vector3(0.0, 0.0, -0.4), rot: new THREE.Euler(0.0, 0.0, 0.0), scale: 1 },
 };
 
 export function createViewmodel(camera) {
@@ -28,6 +28,7 @@ export function createViewmodel(camera) {
     const base = BASE[id];
     b.group.position.copy(base.pos);
     b.group.rotation.copy(base.rot);
+    if (base.scale) b.group.scale.setScalar(base.scale);
     b.group.visible = false;
     b.group.traverse((o) => { o.frustumCulled = false; }); // camera-attached: never cull
     poseGroup.add(b.group);
