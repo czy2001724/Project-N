@@ -22,9 +22,12 @@ const TEX = [
 // model is mirrored to a right-handed hold in viewmodel.js (akGroup.scale.x =
 // -1), so these values are authored in that mirrored frame: bigger, lower, and
 // angled so the gun fills the lower-right and the forearm ends sit off-screen.
+// Barrel is ~parallel to -Z, so it projects onto the screen centre (crosshair);
+// roll (z) angles the gun to show its side while keeping stock->muzzle->crosshair
+// collinear. Tiny yaw nudges the line dead-centre.
 const SCALE = 0.03; // GoldSrc units (~inches) -> metres
-const ROT = new THREE.Euler(-0.05, -0.72, 0.05);
-const POS = new THREE.Vector3(-0.12, -0.45, -0.3);
+const ROT = new THREE.Euler(0.0, -0.03, 0.4);
+const POS = new THREE.Vector3(-0.15, -0.45, -0.3);
 
 export function loadAK(onReady, onError) {
   const texLoader = new THREE.TextureLoader().setPath("assets/ak/");
@@ -41,6 +44,15 @@ export function loadAK(onReady, onError) {
   function basicFor(name) {
     const m = /tex(\d+)/.exec(name || "");
     const ti = m ? parseInt(m[1], 10) : 3;
+    // Arm meshes (textures 0-2) use a clean uniform skin tone (cel-shaded by
+    // the scene lights) instead of the gritty CS glove/skin textures.
+    if (ti < 3) {
+      return new THREE.MeshToonMaterial({
+        color: 0xeac09a,
+        emissive: 0x241a10,
+        side: THREE.DoubleSide,
+      });
+    }
     return new THREE.MeshBasicMaterial({
       map: tex(ti),
       transparent: true,
