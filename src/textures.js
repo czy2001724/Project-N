@@ -31,7 +31,7 @@ function grain(ctx, size, alpha) {
 }
 
 // Tech wall panel: base metal, sub-panel seams, rivets, accent strip.
-export function techPanel({ base = "#28313d", seam = "#141a22", accent = "#39b6ff" } = {}) {
+export function techPanel({ base = "#345d7e", seam = "#14283a", accent = "#4ad6ff" } = {}) {
   const S = 256;
   const c = makeCanvas(S);
   const x = c.getContext("2d");
@@ -72,7 +72,7 @@ export function techPanel({ base = "#28313d", seam = "#141a22", accent = "#39b6f
 }
 
 // Floor: dark tech tiles with a grid and small detail squares.
-export function techFloor({ base = "#1b212b", line = "#2c3a47", accent = "#39b6ff" } = {}) {
+export function techFloor({ base = "#1f3a52", line = "#356a8f", accent = "#4ad6ff" } = {}) {
   const S = 256;
   const c = makeCanvas(S);
   const x = c.getContext("2d");
@@ -105,7 +105,7 @@ export function techFloor({ base = "#1b212b", line = "#2c3a47", accent = "#39b6f
 }
 
 // Diagonal hazard stripes for door trims / crate tops.
-export function hazardStripes(a = "#e0a93f", b = "#1c2128") {
+export function hazardStripes(a = "#ffc12e", b = "#1c2128") {
   const S = 128;
   const c = makeCanvas(S);
   const x = c.getContext("2d");
