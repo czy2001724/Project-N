@@ -92,8 +92,13 @@ export function createViewmodel(camera) {
         f.userData.mat.opacity = 1;
       }
     },
-    // Called every frame to fade the muzzle flash.
+    // Called every frame.
     tick(dt) {
+      // Aspect-lock: a camera-attached view-model's horizontal screen position
+      // depends on the window's aspect ratio. Compensate so it always renders as
+      // if at a 16:9 reference (matches tools/aim.html regardless of window size).
+      root.scale.x = camera.aspect / (16 / 9);
+
       if (flashT > 0) {
         flashT -= dt;
         const f = built[currentId] && built[currentId].flash;

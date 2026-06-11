@@ -60,7 +60,7 @@
         <button id="copy">复制参数</button>
         <button id="reset">恢复当前游戏值</button>
       </div>
-      <div class="hint">调到满意后点「复制参数」，把内容发给我即可。画面与游戏一致（相机 FOV 72，洋红线=屏幕中线）。<br />提示：横向位置会随窗口宽高比变化，请把调节器和游戏都用同样大小的窗口（最好都全屏/最大化）。</div>
+      <div class="hint">调到满意后点「复制参数」，把内容发给我即可。画面已锁定 16:9 参考宽高比并与游戏一致（相机 FOV 72，洋红线=屏幕中线），窗口大小不再影响结果。</div>
     </div>
 
     <script type="importmap">
@@ -76,7 +76,7 @@
       import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
 
       // Defaults = current in-game values (akmodel.js)
-      const DEFAULTS = { mirror: true, scale: 0.054, rx: -0.06, ry: 0.08, rz: 0.01, px: 0.12, py: -0.49, pz: -0.1 };
+      const DEFAULTS = { mirror: true, scale: 0.061, rx: -0.06, ry: 0.12, rz: -0.03, px: 0.045, py: -0.685, pz: -0.1 };
       const state = { ...DEFAULTS };
 
       const TEX = ["view_glove.png","view_skin.png","view_finger.png","QS_AK1.png","QS_AK2.png","QS_AK3.png","QS_AK4.png","QS_AK5.png"];
@@ -98,11 +98,16 @@
       }
       addEventListener("resize", resize); resize();
 
-      // mirror group -> holder -> root(obj), matching the game's akGroup/holder/root
+      // aspectGroup -> mirror group -> holder -> root(obj). aspectGroup applies
+      // the same 16:9 aspect-lock as the game so the window shape doesn't matter;
+      // mirrorGroup is the game's akGroup (scale.x = -1).
+      const REF_ASPECT = 16 / 9;
+      const aspectGroup = new THREE.Group();
       const mirrorGroup = new THREE.Group();
       const holder = new THREE.Group();
+      aspectGroup.add(mirrorGroup);
       mirrorGroup.add(holder);
-      camera.add(mirrorGroup);
+      camera.add(aspectGroup);
       let root = null;
 
       const texLoader = new THREE.TextureLoader().setPath("../assets/ak/");
@@ -134,8 +139,11 @@
         root.position.set(0, 0, 0);
         root.scale.setScalar(state.scale);
         root.rotation.set(state.rx, state.ry, state.rz);
+        // bbox in pure local space: neutralise mirror AND aspect so centring
+        // matches the game (which normalises before either is applied).
+        aspectGroup.scale.x = 1;
         mirrorGroup.scale.x = 1;
-        mirrorGroup.updateMatrixWorld(true);
+        aspectGroup.updateMatrixWorld(true);
         const box = new THREE.Box3().setFromObject(holder);
         const c = box.getCenter(new THREE.Vector3());
         root.position.x += state.px - c.x;
@@ -177,7 +185,10 @@ const POS = new THREE.Vector3(${f(state.px)}, ${f(state.py)}, ${f(state.pz)});
       document.getElementById("reset").addEventListener("click", () => { Object.assign(state, DEFAULTS); syncInputs(); apply(); });
 
       syncInputs();
-      renderer.setAnimationLoop(() => renderer.render(scene, camera));
+      renderer.setAnimationLoop(() => {
+        aspectGroup.scale.x = camera.aspect / REF_ASPECT; // same 16:9 lock as the game
+        renderer.render(scene, camera);
+      });
     </script>
   </body>
 </html>
