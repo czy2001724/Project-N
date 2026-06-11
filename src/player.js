@@ -21,7 +21,6 @@ export function createPlayer(camera, world) {
     gravity: 15,
     crouching: false,
     sprinting: false,
-    sprintToggled: false, // toggled with a Shift tap (avoids holding Shift)
     health: 100,
   };
 
@@ -55,13 +54,6 @@ export function createPlayer(camera, world) {
     jumpBuffer = 0.12;
   }
 
-  // Toggle sprint on/off (bound to a Shift tap). Using a toggle means the
-  // player never has to hold Shift while jumping, which sidesteps the
-  // W+Shift+Space keyboard ghosting that blocks the jump keypress.
-  function toggleSprint() {
-    state.sprintToggled = !state.sprintToggled;
-  }
-
   function resolveCollisions() {
     const r = state.radius;
     // clamp to room bounds
@@ -92,10 +84,14 @@ export function createPlayer(camera, world) {
 
   function update(dt) {
     state.crouching = keys.has("ControlLeft") || keys.has("ControlRight");
-    if (state.crouching) state.sprintToggled = false; // crouch cancels sprint
     const moving =
       keys.has("KeyW") || keys.has("KeyA") || keys.has("KeyS") || keys.has("KeyD");
-    state.sprinting = state.sprintToggled && !state.crouching && state.grounded && moving;
+    // Sprint is derived from input every frame (held Shift), decoupled from
+    // jumping: holding Shift in mid-air simply makes sprint engage the moment
+    // you land. Only a *new* Space press while W+Shift are held can be blocked
+    // by keyboard ghosting — and that combo isn't needed to sprint on landing.
+    const sprintHeld = keys.has("ShiftLeft") || keys.has("ShiftRight");
+    state.sprinting = sprintHeld && !state.crouching && state.grounded && moving;
 
     let speed = state.moveSpeed;
     if (state.crouching) speed *= state.crouchMul;
@@ -144,5 +140,5 @@ export function createPlayer(camera, world) {
     camera.rotation.x = state.pitch;
   }
 
-  return { state, keys, look, addPitch, queueJump, toggleSprint, update };
+  return { state, keys, look, addPitch, queueJump, update };
 }
