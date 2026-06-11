@@ -15,7 +15,7 @@ import { renderInventory, ITEM_DB } from "./inventory.js?v=DEV";
 // Human-readable build version: YYMMDD + 3-digit deploy count for that day
 // (e.g. 260611001 = 2026-06-11, 1st deploy). Bumped by hand each deploy so a
 // refresh visibly confirms whether the new build is live.
-const BUILD_VERSION = "260611021";
+const BUILD_VERSION = "260611022";
 (() => {
   const el = document.getElementById("buildVer");
   if (el) el.textContent = `v${BUILD_VERSION}`;
@@ -23,10 +23,10 @@ const BUILD_VERSION = "260611021";
 
 // --- Renderer / scene / camera ------------------------------------------
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // cap super-sampling for perf
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap; // cheaper than PCFSoft
 renderer.toneMapping = THREE.ACESFilmicToneMapping; // filmic, realistic response
 renderer.toneMappingExposure = 1.05;
 document.body.appendChild(renderer.domElement);
@@ -253,6 +253,9 @@ function updateHUD() {
 }
 
 // --- Main loop ----------------------------------------------------------
+const fpsEl = document.getElementById("fps");
+let fpsFrames = 0;
+let fpsLast = performance.now();
 let last = performance.now();
 function animate(now) {
   const dt = Math.min(0.033, (now - last) / 1000);
@@ -267,6 +270,13 @@ function animate(now) {
 
   composer.render();
   updateHUD();
+
+  fpsFrames += 1;
+  if (now - fpsLast >= 500) {
+    if (fpsEl) fpsEl.textContent = `${Math.round((fpsFrames * 1000) / (now - fpsLast))} FPS`;
+    fpsFrames = 0;
+    fpsLast = now;
+  }
   requestAnimationFrame(animate);
 }
 
